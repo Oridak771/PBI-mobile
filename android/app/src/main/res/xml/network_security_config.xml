@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+        Cleartext HTTP is allowed on purpose:
+        * the CBI platform (API_BASE_URL, e.g. http://10.10.10.53:8222) and the
+          Power BI Report Server hosts are only reachable on the GSH internal
+          network, over plain HTTP;
+        * PBIRS servers are managed by admins in the CBI platform and can be
+          added at runtime (catalog.servers), so they cannot be listed here.
+        The WebView answers PBIRS challenges with NTLM, a challenge/response
+        protocol: the password itself is never sent over the wire, and the app
+        only answers challenges from hosts listed in catalog.servers.
+        The app refuses an HTTP API_BASE_URL outside private address ranges
+        (see lib/core/config/app_config.dart).
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
