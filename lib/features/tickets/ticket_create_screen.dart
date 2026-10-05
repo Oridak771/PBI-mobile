@@ -257,6 +257,8 @@ class _ChoiceField extends StatelessWidget {
         initialValue: value,
         isExpanded: true,
         borderRadius: BorderRadius.circular(AppDimens.radiusControl),
+        dropdownColor: context.palette.sheet,
+        style: TextStyle(color: context.palette.text, fontSize: 14.5),
         decoration: InputDecoration(errorText: error, errorMaxLines: 3),
         items: [
           for (final c in choices)

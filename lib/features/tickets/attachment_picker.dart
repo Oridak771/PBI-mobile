@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/theme/app_palette.dart';
 import '../../data/models/ticket.dart';
+import '../../core/widgets/common.dart';
+import '../../core/widgets/glass.dart';
 
 enum AttachmentSource { camera, gallery }
 
@@ -56,7 +58,7 @@ final ticketImagePickerProvider = Provider<TicketImagePicker>(
 
 /// "Appareil photo" / "Galerie" bottom sheet.
 Future<AttachmentSource?> chooseAttachmentSource(BuildContext context) =>
-    showModalBottomSheet<AttachmentSource>(
+    showGlassSheet<AttachmentSource>(
       context: context,
       builder: (sheetContext) {
         final palette = sheetContext.palette;
@@ -65,8 +67,9 @@ Future<AttachmentSource?> chooseAttachmentSource(BuildContext context) =>
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: Icon(
+                leading: IconWell(
                   Icons.photo_camera_outlined,
+                  size: 36,
                   color: palette.primaryText,
                 ),
                 title: const Text('Appareil photo'),
@@ -74,8 +77,9 @@ Future<AttachmentSource?> chooseAttachmentSource(BuildContext context) =>
                     Navigator.pop(sheetContext, AttachmentSource.camera),
               ),
               ListTile(
-                leading: Icon(
+                leading: IconWell(
                   Icons.photo_library_outlined,
+                  size: 36,
                   color: palette.primaryText,
                 ),
                 title: const Text('Galerie'),

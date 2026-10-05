@@ -59,3 +59,25 @@ String relativeTimeFr(DateTime? date, {DateTime? now}) {
   if (diff.inDays < 365) return '${diff.inDays ~/ 30}mois';
   return '${diff.inDays ~/ 365}an';
 }
+
+/// Short French relative time of the glass lists: `à l'instant`, `3 min`,
+/// `2 h`, `hier`, `4 j`, `2 mois`, `1 an`.
+String relativeShortFr(DateTime? date, {DateTime? now}) {
+  if (date == null) return '';
+  final diff = (now ?? DateTime.now()).difference(date);
+  if (diff.inMinutes < 1) return "à l'instant";
+  if (diff.inHours < 1) return '${diff.inMinutes} min';
+  if (diff.inDays < 1) return '${diff.inHours} h';
+  if (diff.inDays == 1) return 'hier';
+  if (diff.inDays < 30) return '${diff.inDays} j';
+  if (diff.inDays < 365) return '${diff.inDays ~/ 30} mois';
+  final years = diff.inDays ~/ 365;
+  return years == 1 ? '1 an' : '$years ans';
+}
+
+/// "il y a 2 h", "hier", "il y a 4 j" (récents).
+String relativeAgoFr(DateTime? date, {DateTime? now}) {
+  final short = relativeShortFr(date, now: now);
+  if (short.isEmpty || short == 'hier' || short.startsWith('à ')) return short;
+  return 'il y a $short';
+}

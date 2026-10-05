@@ -5,7 +5,8 @@ import '../providers.dart';
 import 'common.dart';
 
 /// Circular avatar: the photo (downloaded with the Bearer header) or the
-/// initials on `avatar_color`.
+/// initials on `avatar_color` — or, with [brand], on the green gradient of
+/// the glass style (white 40% ring, dark initials).
 class UserAvatar extends ConsumerWidget {
   const UserAvatar({
     super.key,
@@ -13,12 +14,14 @@ class UserAvatar extends ConsumerWidget {
     this.photoUrl,
     this.initials = '',
     this.color,
+    this.brand = false,
   });
 
   final double size;
   final String? photoUrl;
   final String initials;
   final String? color;
+  final bool brand;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,7 +33,17 @@ class UserAvatar extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: parseHexColor(color),
+        color: brand ? null : parseHexColor(color),
+        gradient: brand
+            ? const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFB6DD62), Color(0xFF5E8A1F)],
+              )
+            : null,
+        border: brand
+            ? Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2)
+            : null,
       ),
       alignment: Alignment.center,
       child: bytes != null
@@ -49,8 +62,8 @@ class UserAvatar extends ConsumerWidget {
   Widget _initials() => Text(
     initials.isEmpty ? '?' : initials.toUpperCase(),
     style: TextStyle(
-      color: Colors.white,
-      fontSize: size * 0.36,
+      color: brand ? const Color(0xFF10140A) : Colors.white,
+      fontSize: size * (brand ? 0.33 : 0.36),
       fontWeight: FontWeight.bold,
     ),
   );

@@ -1,11 +1,12 @@
 # GSH - CBI (mobile)
 
-Flutter Android app (version **3.4.0+11**, application id
+Flutter Android app (version **4.0.0+12**, application id
 `com.cbi.portal.cbi_mobile`) that lists the Power BI reports a user may access
 on the CBI platform and displays them from Power BI Report Server (PBIRS) in a
 WebView. It is the revival of the legacy Java app (`gsh-cbi-android-master`,
-v2.2 / versionCode 6): same screens, navigation and French texts, restyled
-since 3.1 with the Portail BI web platform theme (light + dark).
+v2.2 / versionCode 6), redesigned in 4.0 with the Portail BI **glass** style
+(approved mockup: `docs/design/portail_bi_glass.png`, source
+`docs/design/mockup.html`), light and dark.
 
 The backend is the CBI Django platform, mobile API **v1**
 (`<API_BASE_URL>/mobile/v1/`), specified in
@@ -51,7 +52,8 @@ lib/
     layout/adaptive.dart    window size classes, content max width, text-scale clamp, orientations
     storage/catalog_cache_store.dart  last catalog (JSON + ETag) for an instant home at launch
     utils/                  JSON readers, version compare, date / duration / relative-time formats
-    widgets/                logo slot, group logo tile, headers, cards, form page, avatar, misc
+    widgets/                glass system (glass.dart), report icon tiles, logo slot, group logo,
+                            headers, cards, form page, avatar, skeletons
   data/
     models/                 user, remote config, catalog (sections/groups/tabs/reports/servers),
                             notifications, history, tickets — all with fromJson
@@ -62,10 +64,12 @@ lib/
                             SessionController (login, logout, silent re-login, 401 wipe, NTLM password)
     lock/                   LockPolicy (pure decision), AppLockController, AppLockGate
                             (lock screen above the navigator, back guard), lock screen
-    shell/                  header, bottom navigation / navigation rail, badge poller, back handling
-    home/                   sections (consolidé / group cards with logos, société grid), no-access
-    group_tabs/             legacy DirectionFragment (tab per direction)
-    reports/                catalog controller (ETag, optimistic favourites), report list rows
+    shell/                  floating glass tab bar / glass rail, notifications poller, back handling
+    home/                   greeting + bell, search field, Récents (history/), section chips,
+                            group grid (logos), no-access
+    search/                 instant local search over the catalog (name / location)
+    group_tabs/             group screen (header, "Tous" + direction chips, one report panel)
+    reports/                catalog controller (ETag, optimistic favourites), report rows / panel
     viewer/                 PBIRS WebView, phone/full edition choice, full screen,
                             NTLM host allowlist, open/close + viewing time
     tickets/                "Tickets": list + filters, create (image), detail / conversation,
@@ -75,23 +79,88 @@ test/                       unit + widget tests (see below)
 ```
 
 State management: `flutter_riverpod` 3 (no code generation). Navigation:
-plain `Navigator`; the group tabs are shown inside the shell like the legacy
-fragment.
+plain `Navigator`; a group is shown inside the shell (above the tab bar) like
+the legacy fragment.
 
-## Theme (3.1)
+## Design: Portail BI glass (4.0)
 
-- Palette of the Portail BI web platform, light and dark (`AppPalette`, a
-  `ThemeExtension`; widgets read `context.palette`, no hard-coded colours).
-  Flat surfaces with 1px borders (no elevation, no text shadows), radius 14 on
-  cards / 10 on inputs and buttons, filled inputs with a green 1.5px focus
-  border, green `#A5CF4B` primary buttons with bold `#1C1D22` text, Material 3
-  `NavigationBar`, floating snackbars, Roboto (Android system font).
-- Theme mode follows the phone by default; **Paramètre → Apparence**
+Reference: `docs/design/portail_bi_glass.png` (approved) and its source
+`docs/design/mockup.html`; renders of the implementation (dark: login, home,
+group, tickets, 412×892 @2x) are in `docs/design/implementation/`.
+
+- **Background** (`GlassBackground`, `lib/core/widgets/glass.dart`): base
+  gradient `#121519 → #0C0E11` with three radial glows (green
+  `rgba(165,207,75,.55)` top-right, teal `rgba(38,166,154,.40)` mid-left, blue
+  `rgba(124,196,232,.32)` bottom-right), painted once per screen behind its
+  own `RepaintBoundary`, no animation.
+- **Glass surfaces** (`GlassPanel`): white 14% → 4% gradient (135°), 1px white
+  16% border, 1px white 28% inner top highlight, soft `0 10 30` shadow drawn
+  outside the surface (stacked translucent rects, no mask filter). Radius 20
+  (cards), 24 (list panels, sheets), 22–32 (pills, tab bar).
+  `blur: true` adds a `BackdropFilter` (blur 22 + saturation 170%) and is used
+  **only on static chrome**: floating tab bar / rail, search fields, segmented
+  chip bars, round header buttons, login panel, viewer toolbar buttons and
+  toggle, sheets, bottom bars. Cards inside scrolling lists and grids use the
+  same look without blur (smooth scrolling on mid-range Android).
+- **Accent**: green `#A5CF4B`; primary buttons and selected chips use the
+  vertical gradient `#B6DD62 → #93BF3A`, dark text `#10140A`, white 35% border,
+  inner highlight and a green glow (`GradientButton`, `GlassChip`,
+  `GlassSegmentedBar`). Text `#F5F6F8`, muted `rgba(235,238,243,.62)`, green
+  text `#B9E06A` / `#C8EA82`.
+- **Typography**: Roboto (system font), bold titles with a slight negative
+  letter spacing (page titles 24, names 16–17, rows 13–13.5 semi-bold, meta
+  10–11 muted). No text shadows (guarded by `test/no_text_shadow_test.dart`).
+- **Report icon tiles** (`ReportIconTile`): 40×40, radius 13, green / blue /
+  amber tint at 22%; icon and tint picked deterministically from the report
+  name (business keywords, then a stable FNV hash) among bar chart, pie, line,
+  receipt, truck, users, map.
+- **Light mode**: same language on `#F3F5F8` with weaker glows, white 60–72%
+  frosted glass, text `#1B1E24`, muted `#5F6168`, green text `#5E8A1F`.
+- Theme mode follows the phone by default; **Profil → Apparence**
   (Système / Clair / Sombre) applies instantly and is stored in
   `shared_preferences` (`theme_mode`), read before `runApp`.
-- Brand images: `*_on_dark` (light lettering) in dark mode, the original
-  dark-lettered `portail_bi_logo.png` / `pbi_mark.png` in light mode
+- Brand images: `*_on_dark` (light lettering) in dark mode, the dark-lettered
+  `portail_bi_logo.png` / `pbi_mark.png` in light mode
   (`AppAssets.loginLogo(brightness)` …). The splash stays dark.
+
+### Screens
+
+- **Login**: full Portail BI logo (~220 wide, theme-aware), "Vos tableaux de
+  bord, partout", one blurred glass panel (identifier, password with eye
+  toggle and green focus border, "Se souvenir de moi", gradient "Se
+  connecter" + square glass fingerprint button when fingerprint login is
+  available), footer "Cellule Business Intelligence · GSH".
+- **Shell**: floating glass tab bar (16 from the sides, 18 from the bottom,
+  64 high, radius 32) with **Accueil / Favoris / Tickets / Profil**; the
+  selected tab is a lit glass pill with a green icon and label. Tablets keep a
+  `NavigationRail` inside a floating glass panel. Scrolling content reserves
+  room for the bar (`BottomBarInset`).
+- **Accueil**: avatar (photo or green gradient initials), "Bonjour" + first
+  name, bell (glass circle, green dot when unread) → notifications screen;
+  blurred search field → instant local search of every catalog report by name
+  or location (accent / case insensitive); "Récents" = up to 6 distinct
+  reports of `GET history/` still in the catalog ("Tout voir" → full history);
+  pinned blurred chip bar of the catalog sections (first selected) and a
+  3-column grid (more on tablets) of group cards (logo, name, "N rapports";
+  consolidé = its direction tabs). Pull-to-refresh, skeletons, cached catalog
+  first and the no-access state are kept.
+- **Group**: round glass back button, logo, name, "parent · N rapports";
+  chips "Tous" + direction codes (replace the tabs; a consolidé card preselects
+  its direction); reports in one glass list panel: icon tile, name, meta line
+  ("Vue mobile · DCO" with a phone icon when `has_mobile_layout` or a phone
+  edition, else "DFC · mis à jour hier"), heart (green when favourite,
+  optimistic).
+- **Favoris**: glass list panels grouped by location.
+- **Tickets** (tab): title + gradient "Nouveau", blurred segmented filter
+  (Tous / Ouverts / En cours / Fermés / Rejetés, + "Assignés à moi" for
+  admins), glass ticket cards (status pill, "type · catégorie", relative date,
+  title, glowing priority dot, assignee, attachment / message indicators).
+  Detail and creation screens use glass panels and a blurred bottom bar.
+- **Profil** (former Paramètre): profile card, Activité (Historique),
+  Sécurité, Apparence, Assistance (À propos, Aide), logout.
+- **Viewer**: only the toolbar (round glass buttons) and the Mobile / Bureau
+  toggle (blurred segmented pill) were restyled; the WebView, phone layout and
+  scripts are unchanged.
 
 ## Behaviour highlights
 
@@ -114,16 +183,16 @@ fragment.
   changé. Veuillez vous reconnecter.". Network errors / `429` fall back to the
   normal expiry and delete nothing. Logging in with the box unchecked forgets
   them. A new password typed in the viewer's NTLM prompt updates them.
-- **App lock** (Paramètre → Sécurité → "Verrouillage par empreinte", optional,
+- **App lock** (Profil → Sécurité → "Verrouillage par empreinte", optional,
   offered once after the first login on a phone with a fingerprint): the lock
   screen covers the app at cold start and on resume after the chosen delay
   (Immédiat / 1 / 5 / 15 min, default 1 min). Fingerprint or face, with the
   phone PIN / pattern as fallback. The screen underneath (including an open
   report) keeps its state; the back button is blocked; "Se déconnecter" is
   available on the lock screen.
-- **Tickets** (Paramètre → Tickets, the platform's ticket system): list with
-  status chips (Tous / Ouvert / En cours / Fermé / Rejeté, labels from
-  `tickets/choices/`) and, for admins, "Assignés à moi"; rows show title,
+- **Tickets** (the Tickets tab, the platform's ticket system): list with
+  a segmented status filter (Tous / Ouverts / En cours / Fermés / Rejetés,
+  statuses from `tickets/choices/`) and, for admins, "Assignés à moi"; rows show title,
   type, catégorie, priority dot (haute = red, moyenne = amber, basse = grey),
   status pill, creator (admins), relative date and message count. "Nouveau
   ticket" = the web form (titre, description, type, catégorie, priorité,
@@ -202,7 +271,10 @@ errors, admin panel visibility, optimistic status rollback, assignee update,
 composer with image, multipart body / file part / Bearer / 401 resend),
 adaptive layouts (no overflow at 320 dp × 1.3 and 1024×768 for login, every
 shell tab, tickets list / detail / create, history; rail vs bar; two-pane
-tickets; two-column settings; wrapping home grid), the cached-first catalog,
+tickets; two-column settings; wider home grid on tablets), the cached-first
+catalog, the glass design (4 tabs, bell → notifications, home search and
+récents, group chips filter, `has_mobile_layout` parsing and "Vue mobile" meta,
+blur only on static chrome, deterministic icon tiles, theme-aware login logo)
 and a guard against text shadows / legacy colours.
 
 See [MOBILE_SETUP.md](MOBILE_SETUP.md) for Android, security and release notes.

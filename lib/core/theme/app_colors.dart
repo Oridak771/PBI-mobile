@@ -9,7 +9,7 @@ abstract final class AppColors {
   static const green = Color(0xFFA5CF4B);
 
   /// Splash / launch screen background (always dark).
-  static const splashBackground = Color(0xFF111318);
+  static const splashBackground = Color(0xFF0C0E11);
 
   /// Default `avatar_color` when the API sends none.
   static const avatarFallback = Color(0xFF358BA4);

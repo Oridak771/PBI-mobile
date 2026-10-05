@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_dimens.dart';
 import '../../core/theme/app_palette.dart';
+import '../../core/utils/formatters.dart';
 import '../../core/widgets/common.dart';
-import '../../core/widgets/skeleton.dart';
+import '../../core/widgets/report_tile.dart';
 import '../../data/models/catalog.dart';
 import '../viewer/viewer_screen.dart';
 import 'catalog_controller.dart';
@@ -27,43 +27,38 @@ Future<void> toggleFavorite(
   if (error != null && context.mounted) showToast(context, error);
 }
 
-/// Legacy fragment_list_rapport.xml: report rows of one tab.
-class ReportList extends ConsumerWidget {
-  const ReportList({super.key, required this.tab});
-
-  final GroupTab tab;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final catalog = ref.watch(catalogProvider).value;
-    if (catalog == null) return const SkeletonList();
-    final reports = catalog.reportsFor(tab);
-    return RefreshIndicator(
-      onRefresh: () => ref.read(catalogProvider.notifier).refresh(),
-      child: CenteredContent(
-        builder: (context, gutter) => ListView.builder(
-        padding: EdgeInsets.fromLTRB(gutter, 12, gutter, 24),
-        itemCount: reports.length,
-        itemBuilder: (context, i) {
-          final report = reports[i];
-          return ReportRow(
-            key: ValueKey(report.id),
-            report: report,
-            subtitle: report.description.isNotEmpty
-                ? report.description
-                : report.location,
-            favorite: catalog.isFavorite(report.id),
-            onTap: () => openReport(context, report),
-            onToggleFavorite: () => toggleFavorite(context, ref, report.id),
-          );
-        },
-      ),
-      ),
+/// Meta line of a report row: "Vue mobile · DCO" (with a phone icon) when
+/// the report has a mobile view, otherwise "DFC · mis à jour hier" (or just
+/// the label when the modification date is unknown).
+({bool mobile, String text}) reportMeta(
+  Report report,
+  String label, {
+  DateTime? now,
+}) {
+  if (report.hasMobileView) {
+    return (
+      mobile: true,
+      text: label.isEmpty ? 'Vue mobile' : 'Vue mobile · $label',
     );
   }
+  final modified = relativeShortFr(report.modifiedAt, now: now);
+  final parts = [
+    if (label.isNotEmpty) label,
+    if (modified.isNotEmpty)
+      modified == 'hier' || modified.startsWith('à ')
+          ? 'mis à jour $modified'
+          : 'mis à jour il y a $modified',
+  ];
+  return (mobile: false, text: parts.join(' · '));
 }
 
-/// Report row: leading insights icon well, name, muted subtitle, heart.
+/// Last segment of a `location` ("Consolidé / DFC" → "DFC").
+String locationLabel(String location) {
+  final parts = location.split('/').map((p) => p.trim()).where((p) => p.isNotEmpty);
+  return parts.isEmpty ? '' : parts.last;
+}
+
+/// Report row of the glass list panels: icon tile, name, meta line, heart.
 class ReportRow extends StatelessWidget {
   const ReportRow({
     super.key,
@@ -71,31 +66,33 @@ class ReportRow extends StatelessWidget {
     required this.favorite,
     required this.onTap,
     required this.onToggleFavorite,
-    this.subtitle,
+    this.label = '',
   });
 
   final Report report;
   final bool favorite;
-  final String? subtitle;
+
+  /// Direction code / location label of the meta line.
+  final String label;
   final VoidCallback onTap;
   final VoidCallback onToggleFavorite;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final sub = subtitle ?? '';
-    return AppCard(
-      margin: const EdgeInsets.only(bottom: 8),
+    final meta = reportMeta(report, label);
+    final metaStyle = TextStyle(color: palette.textMuted, fontSize: 10.5);
+    return InkWell(
       onTap: onTap,
       child: ConstrainedBox(
         constraints: const BoxConstraints(
           minHeight: AppDimens.reportRowMinHeight,
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+          padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
           child: Row(
             children: [
-              const IconWell(Icons.insights_rounded),
+              ReportIconTile(name: report.name),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -108,33 +105,31 @@ class ReportRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: palette.text,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
                         height: 1.25,
                       ),
                     ),
-                    if (sub.isNotEmpty || report.hasPhoneEdition) ...[
-                      const SizedBox(height: 3),
+                    if (meta.text.isNotEmpty) ...[
+                      const SizedBox(height: 2),
                       Row(
                         children: [
-                          if (report.hasPhoneEdition) ...[
+                          if (meta.mobile) ...[
                             Icon(
                               Icons.smartphone_rounded,
-                              size: 13,
-                              color: palette.primaryText,
-                              semanticLabel: 'Édition téléphone',
+                              key: const Key('report-mobile-icon'),
+                              size: 11,
+                              color: palette.textMuted,
+                              semanticLabel: 'Vue mobile disponible',
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 3),
                           ],
                           Expanded(
                             child: Text(
-                              sub,
+                              meta.text,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: palette.textMuted,
-                                fontSize: 13,
-                              ),
+                              style: metaStyle,
                             ),
                           ),
                         ],
@@ -148,6 +143,32 @@ class ReportRow extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// One glass list panel of report rows (`(report, label)` entries).
+class ReportListPanel extends ConsumerWidget {
+  const ReportListPanel({super.key, required this.entries});
+
+  final List<(Report, String)> entries;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final catalog = ref.watch(catalogProvider).value;
+    return GlassListPanel(
+      key: const Key('report-list-panel'),
+      children: [
+        for (final (report, label) in entries)
+          ReportRow(
+            key: ValueKey('report-${report.id}'),
+            report: report,
+            label: label,
+            favorite: catalog?.isFavorite(report.id) ?? report.favorite,
+            onTap: () => openReport(context, report),
+            onToggleFavorite: () => toggleFavorite(context, ref, report.id),
+          ),
+      ],
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../layout/adaptive.dart';
 import '../theme/app_dimens.dart';
 import '../theme/app_palette.dart';
+import 'glass.dart';
 
 /// Gently pulsing placeholder shown while a list loads (instead of a
 /// full-screen spinner). Static when animations are disabled.
@@ -68,35 +69,30 @@ class SkeletonBox extends StatelessWidget {
     width: width,
     height: height,
     decoration: BoxDecoration(
-      color: context.palette.surfaceAlt,
+      color: context.palette.skeleton,
       borderRadius: BorderRadius.circular(radius),
     ),
   );
 }
 
-/// Card-shaped skeleton row: icon well, two text lines.
+/// Card-shaped skeleton row: icon tile, two text lines.
 class SkeletonRow extends StatelessWidget {
   const SkeletonRow({super.key, this.lines = 2});
 
   final int lines;
 
   @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(AppDimens.radiusCard),
-        border: Border.all(color: palette.border),
-      ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: GlassPanel(
+      shadow: false,
+      padding: const EdgeInsets.all(13),
       child: Row(
         children: [
           const SkeletonBox(
-            width: 40,
-            height: 40,
-            radius: AppDimens.radiusControl,
+            width: AppDimens.tile,
+            height: AppDimens.tile,
+            radius: AppDimens.radiusTile,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -105,13 +101,13 @@ class SkeletonRow extends StatelessWidget {
               children: [
                 const FractionallySizedBox(
                   widthFactor: 0.7,
-                  child: SkeletonBox(height: 14),
+                  child: SkeletonBox(height: 13),
                 ),
                 for (var i = 1; i < lines; i++) ...[
                   const SizedBox(height: 8),
                   const FractionallySizedBox(
                     widthFactor: 0.45,
-                    child: SkeletonBox(height: 11),
+                    child: SkeletonBox(height: 10),
                   ),
                 ],
               ],
@@ -119,8 +115,8 @@ class SkeletonRow extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
 }
 
 /// Loading list: [count] skeleton rows, centered like the real content.
@@ -144,7 +140,7 @@ class SkeletonList extends StatelessWidget {
   );
 }
 
-/// Home loading state: section labels and rows of card placeholders.
+/// Home loading state: récents cards, the chip bar and the group grid.
 class HomeSkeleton extends StatelessWidget {
   const HomeSkeleton({super.key});
 
@@ -153,28 +149,41 @@ class HomeSkeleton extends StatelessWidget {
     child: ListView(
       key: const Key('skeleton-home'),
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(AppDimens.page, 8, 0, 16),
+      padding: const EdgeInsets.fromLTRB(AppDimens.page, 16, AppDimens.page, 16),
       children: [
-        for (var s = 0; s < 3; s++) ...[
-          const Padding(
-            padding: EdgeInsets.only(top: 12, bottom: 10),
-            child: SkeletonBox(width: 90, height: 12),
-          ),
-          SizedBox(
-            height: AppDimens.groupCardHeight,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 8,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(width: AppDimens.groupCardGap),
-              itemBuilder: (_, _) => const SkeletonBox(
-                width: AppDimens.groupCardWidth,
-                height: AppDimens.groupCardHeight,
-                radius: AppDimens.radiusCard,
-              ),
+        const SkeletonBox(width: 80, height: 13),
+        const SizedBox(height: 12),
+        const Row(
+          children: [
+            Expanded(
+              child: SkeletonBox(height: 112, radius: AppDimens.radiusCard),
             ),
+            SizedBox(width: 10),
+            Expanded(
+              child: SkeletonBox(height: 112, radius: AppDimens.radiusCard),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        const SkeletonBox(height: 40, radius: 999),
+        const SizedBox(height: 14),
+        for (var r = 0; r < 2; r++) ...[
+          const Row(
+            children: [
+              Expanded(
+                child: SkeletonBox(height: 104, radius: AppDimens.radiusCard),
+              ),
+              SizedBox(width: AppDimens.gridGap),
+              Expanded(
+                child: SkeletonBox(height: 104, radius: AppDimens.radiusCard),
+              ),
+              SizedBox(width: AppDimens.gridGap),
+              Expanded(
+                child: SkeletonBox(height: 104, radius: AppDimens.radiusCard),
+              ),
+            ],
           ),
+          const SizedBox(height: AppDimens.gridGap),
         ],
       ],
     ),

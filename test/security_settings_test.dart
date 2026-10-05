@@ -39,7 +39,7 @@ void main() {
       lockStore: MemoryLockSettingsStore(),
       biometrics: FakeBiometricAuth(),
     );
-    expect(find.text('SÉCURITÉ'), findsOneWidget);
+    expect(find.text('Sécurité'), findsOneWidget);
     expect(find.text('Verrouillage par empreinte'), findsOneWidget);
     expect(lockSwitch(tester).value, isFalse);
     expect(lockSwitch(tester).onChanged, isNotNull);
@@ -114,7 +114,15 @@ void main() {
       lockStore: MemoryLockSettingsStore(),
       biometrics: FakeBiometricAuth(),
     );
-    await tester.scrollUntilVisible(find.byKey(const Key('logout-button')), 200);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('logout-button')),
+      200,
+      scrollable: find
+          .byWidgetPredicate(
+            (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+          )
+          .first,
+    );
     await tester.tap(find.byKey(const Key('logout-button')));
     await tester.pumpAndSettle();
     expect(find.text('Voulez-vous vraiment vous déconnecter?'), findsOneWidget);

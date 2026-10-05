@@ -57,6 +57,7 @@ Json _report(
   String location, {
   bool favorite = false,
   bool phone = false,
+  bool mobileLayout = false,
 }) => {
   'id': id,
   'name': name,
@@ -75,6 +76,7 @@ Json _report(
       : null,
   'modified_at': _ago(const Duration(days: 2)),
   'favorite': favorite,
+  'has_mobile_layout': mobileLayout,
 };
 
 /// Sociétés of the demo catalog that have a logo (`logo_url`), mapped to the
@@ -200,7 +202,13 @@ Json demoCatalogJson() => {
   ],
   'reports': {
     for (final r in [
-      _report(1, "Chiffre d'Affaires Groupe", 'Consolidé / DGR', favorite: true),
+      _report(
+        1,
+        "Chiffre d'Affaires Groupe",
+        'Consolidé / DGR',
+        favorite: true,
+        mobileLayout: true,
+      ),
       _report(2, 'Tableau de bord Direction Générale', 'Consolidé / DGR'),
       _report(3, 'Suivi Budgétaire', 'Consolidé / DCG'),
       _report(4, 'Effectifs et Masse Salariale', 'Consolidé / DRH'),
@@ -212,7 +220,7 @@ Json demoCatalogJson() => {
         phone: true,
       ),
       _report(6, 'Balance Âgée', 'Consolidé / DFC'),
-      _report(7, 'Ventes par Région', 'Consolidé / DCO'),
+      _report(7, 'Ventes par Région', 'Consolidé / DCO', mobileLayout: true),
       _report(8, 'Production Mensuelle', 'Pôle Industrie / Général'),
       _report(9, 'Stocks Matières Premières', 'Pôle Industrie / Général'),
       _report(10, 'Trésorerie Pôle Construction', 'Pôle Construction / DFC'),

@@ -13,6 +13,7 @@ import '../../data/models/user.dart';
 import '../auth/session_controller.dart';
 import '../settings/settings_view.dart';
 import 'app_lock_controller.dart';
+import '../../core/widgets/glass.dart';
 
 /// Profile kept with the session (cold start: `me/` not refreshed yet).
 final storedUserProvider = FutureProvider.autoDispose<User?>((ref) async {
@@ -82,7 +83,8 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       child: Scaffold(
         key: const Key('lock-screen'),
         backgroundColor: palette.background,
-        body: SafeArea(
+        body: GlassBackground(
+          child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -103,6 +105,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                     Center(
                       child: UserAvatar(
                         size: 88,
+                        brand: true,
                         // The photo needs a live token: initials at cold start.
                         photoUrl: session.isAuthenticated ? user?.photoUrl : null,
                         initials: user?.initials ?? '',
@@ -147,14 +150,11 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                       ),
                     ],
                     const SizedBox(height: 40),
-                    SizedBox(
-                      height: 48,
-                      child: FilledButton.icon(
-                        key: const Key('lock-unlock'),
-                        onPressed: _unlock,
-                        icon: const Icon(Icons.fingerprint_rounded),
-                        label: const Text('Déverrouiller'),
-                      ),
+                    GradientButton(
+                      key: const Key('lock-unlock'),
+                      label: 'Déverrouiller',
+                      icon: Icons.fingerprint_rounded,
+                      onPressed: _unlock,
                     ),
                     const SizedBox(height: 12),
                     TextButton(
@@ -167,6 +167,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 ),
               ),
             ),
+          ),
           ),
         ),
       ),
@@ -181,7 +182,7 @@ Future<void> showEnableLockSheet(BuildContext context) async {
   // Shown once: dismissing the sheet counts as "Plus tard".
   await container.read(appLockProvider.notifier).markOffered();
   if (!context.mounted) return;
-  await showModalBottomSheet<void>(
+  await showGlassSheet<void>(
     context: context,
     isScrollControlled: true,
     builder: (_) => const _EnableLockSheet(),
@@ -241,14 +242,12 @@ class _EnableLockSheetState extends ConsumerState<_EnableLockSheet> {
               style: TextStyle(color: palette.textMuted, fontSize: 14, height: 1.4),
             ),
             const SizedBox(height: 24),
-            SizedBox(
-              height: 48,
-              child: FilledButton.icon(
-                key: const Key('enable-lock-accept'),
-                onPressed: _busy ? null : _enable,
-                icon: const Icon(Icons.fingerprint_rounded),
-                label: const Text('Activer'),
-              ),
+            GradientButton(
+              key: const Key('enable-lock-accept'),
+              label: 'Activer',
+              icon: Icons.fingerprint_rounded,
+              busy: _busy,
+              onPressed: _enable,
             ),
             const SizedBox(height: 8),
             TextButton(

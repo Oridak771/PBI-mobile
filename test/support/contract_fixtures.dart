@@ -84,6 +84,7 @@ Map<String, dynamic> contractCatalog() => {
       'embed_url': 'http://10.20.10.63/Reports/powerbi/y?rs:embed=true',
       'phone': null,
       'favorite': false,
+      'has_mobile_layout': true,
     },
     '20': {
       'id': 20,

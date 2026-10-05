@@ -11,12 +11,14 @@ import '../../core/theme/app_palette.dart';
 import '../../core/widgets/asset_slots.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_page.dart';
+import '../../core/widgets/glass.dart';
 import '../lock/app_lock_controller.dart';
 import '../lock/lock_screen.dart';
 import '../shell/shell_screen.dart';
 import 'session_controller.dart';
 
-/// Legacy AuthenticationAct (activity_main.xml).
+/// Login (legacy AuthenticationAct): Portail BI logo, glass panel with the
+/// fields, "Se souvenir de moi", "Se connecter" and the fingerprint button.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -158,7 +160,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final brightness = Theme.of(context).brightness;
-    return Scaffold(
+    return GlassScaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -167,116 +169,142 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: SingleChildScrollView(
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 32,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(18, 32, 18, 24),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 420),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Portail BI brand logo (dark lettering in light mode).
-                        SizedBox(
-                          height: 72,
-                          child: LogoSlot(
-                            asset: AppAssets.loginLogo(brightness),
-                            fallbackText: 'GSH',
-                            fontSize: 56,
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        Text(
-                          'Accéder à votre session.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: palette.text,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        if (_passwordChanged) ...[
-                          const _Banner(ErrorMessages.passwordChanged),
-                          const SizedBox(height: 16),
-                        ],
-                        _LoginField(
-                          key: const Key('login-username'),
-                          controller: _username,
-                          hint: 'Email | AD 2000',
-                          icon: Icons.person_outline_rounded,
-                          error: _usernameError,
-                          textInputAction: TextInputAction.next,
-                          onChanged: (_) {
-                            if (_usernameError != null) {
-                              setState(() => _usernameError = null);
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 14),
-                        _LoginField(
-                          key: const Key('login-password'),
-                          controller: _password,
-                          hint: 'Mot de Passe',
-                          icon: Icons.lock_outline_rounded,
-                          error: _passwordError,
-                          obscure: _obscure,
-                          password: true,
-                          onToggleObscure: _passwordFromVault
-                              ? null
-                              : () => setState(() => _obscure = !_obscure),
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (_) => _submit(),
-                          onChanged: (_) {
-                            if (_passwordError != null || _passwordFromVault) {
-                              setState(() {
-                                _passwordError = null;
-                                _passwordFromVault = false;
-                              });
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 6),
-                        _RememberMe(
-                          value: _remember,
-                          onChanged: (v) => setState(() => _remember = v),
-                        ),
-                        const SizedBox(height: 14),
-                        SubmitButton(
-                          key: const Key('login-submit'),
-                          label: 'CONNEXION',
-                          busy: _busy,
-                          onPressed: _submit,
-                        ),
-                        if (_showBiometricLogin) ...[
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            height: 48,
-                            child: OutlinedButton.icon(
-                              key: const Key('login-biometric'),
-                              onPressed: _busy ? null : _biometricLogin,
-                              icon: const Icon(Icons.fingerprint_rounded),
-                              label: const Text('Connexion par empreinte'),
+                        // Full Portail BI logo (light lettering in dark mode).
+                        Center(
+                          child: SizedBox(
+                            width: 220,
+                            height: 64,
+                            child: LogoSlot(
+                              asset: AppAssets.loginLogo(brightness),
+                              fallbackText: 'PBI',
+                              fontSize: 44,
                             ),
                           ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Vos tableaux de bord, partout',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: palette.textMuted,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+                        if (_passwordChanged) ...[
+                          const _Banner(ErrorMessages.passwordChanged),
+                          const SizedBox(height: 14),
                         ],
+                        GlassPanel(
+                          key: const Key('login-panel'),
+                          blur: true,
+                          borderRadius: BorderRadius.circular(28),
+                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _LoginField(
+                                key: const Key('login-username'),
+                                controller: _username,
+                                hint: 'Email | AD 2000',
+                                icon: Icons.person_outline_rounded,
+                                error: _usernameError,
+                                textInputAction: TextInputAction.next,
+                                onChanged: (_) {
+                                  if (_usernameError != null) {
+                                    setState(() => _usernameError = null);
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              _LoginField(
+                                key: const Key('login-password'),
+                                controller: _password,
+                                hint: 'Mot de Passe',
+                                icon: Icons.lock_outline_rounded,
+                                error: _passwordError,
+                                obscure: _obscure,
+                                password: true,
+                                onToggleObscure: _passwordFromVault
+                                    ? null
+                                    : () => setState(() => _obscure = !_obscure),
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) => _submit(),
+                                onChanged: (_) {
+                                  if (_passwordError != null ||
+                                      _passwordFromVault) {
+                                    setState(() {
+                                      _passwordError = null;
+                                      _passwordFromVault = false;
+                                    });
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              _RememberMe(
+                                value: _remember,
+                                onChanged: (v) => setState(() => _remember = v),
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: SubmitButton(
+                                      key: const Key('login-submit'),
+                                      label: 'Se connecter',
+                                      busy: _busy,
+                                      onPressed: _submit,
+                                    ),
+                                  ),
+                                  if (_showBiometricLogin) ...[
+                                    const SizedBox(width: 10),
+                                    GlassPanel(
+                                      borderRadius: BorderRadius.circular(17),
+                                      width: 50,
+                                      height: 50,
+                                      child: Material(
+                                        type: MaterialType.transparency,
+                                        child: IconButton(
+                                          key: const Key('login-biometric'),
+                                          tooltip: 'Connexion par empreinte',
+                                          onPressed: _busy
+                                              ? null
+                                              : _biometricLogin,
+                                          icon: Icon(
+                                            Icons.fingerprint_rounded,
+                                            size: 26,
+                                            color: palette.primaryText,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
               ),
             ),
-            // Footer logo (legacy Cellule BI), only once one is chosen.
-            if (AppAssets.footerLogo != null)
-              SizedBox(
-                height: 56,
-                child: LogoSlot(
-                  asset: AppAssets.footerLogo,
-                  fallbackText: 'CBI',
-                  fontSize: 24,
-                  color: palette.textMuted,
-                ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 18, top: 8),
+              child: Text(
+                'Cellule Business Intelligence · GSH',
+                key: const Key('login-footer'),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: palette.textMuted, fontSize: 11),
               ),
+            ),
           ],
         ),
       ),
@@ -316,6 +344,7 @@ class _LoginField extends StatelessWidget {
     return TextField(
       controller: controller,
       obscureText: obscure,
+      obscuringCharacter: '•',
       autocorrect: false,
       enableSuggestions: !password,
       maxLines: 1,
@@ -325,11 +354,22 @@ class _LoginField extends StatelessWidget {
       keyboardType: password
           ? TextInputType.visiblePassword
           : TextInputType.emailAddress,
-      style: TextStyle(color: palette.text, fontSize: 16),
+      style: TextStyle(
+        color: palette.text,
+        fontSize: 13.5,
+        letterSpacing: password && obscure ? 3 : null,
+      ),
       decoration: InputDecoration(
         hintText: hint,
+        hintStyle: TextStyle(
+          color: palette.textMuted,
+          fontSize: 13.5,
+          letterSpacing: 0,
+        ),
         errorText: error,
-        prefixIcon: Icon(icon),
+        contentPadding: const EdgeInsets.symmetric(vertical: 15),
+        prefixIcon: Icon(icon, size: 19),
+        prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 46),
         suffixIcon: password && onToggleObscure != null
             ? IconButton(
                 tooltip: obscure
@@ -340,6 +380,7 @@ class _LoginField extends StatelessWidget {
                   obscure
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined,
+                  size: 19,
                 ),
               )
             : null,
@@ -365,18 +406,25 @@ class _RememberMe extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         onTap: () => onChanged(!value),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(0, 2, 10, 2),
+          padding: const EdgeInsets.fromLTRB(2, 4, 10, 4),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Checkbox(
-                value: value,
-                onChanged: (v) => onChanged(v ?? false),
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: Checkbox(
+                  value: value,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                  onChanged: (v) => onChanged(v ?? false),
+                ),
               ),
+              const SizedBox(width: 8),
               Flexible(
                 child: Text(
                   'Se souvenir de moi',
-                  style: TextStyle(color: palette.text, fontSize: 14),
+                  style: TextStyle(color: palette.textMuted, fontSize: 12),
                 ),
               ),
             ],
@@ -396,14 +444,12 @@ class _Banner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    return Container(
+    return GlassPanel(
       key: const Key('login-banner'),
+      fill: palette.danger.withValues(alpha: 0.12),
+      borderColor: palette.danger.withValues(alpha: 0.4),
+      borderRadius: BorderRadius.circular(AppDimens.radiusControl),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: palette.danger.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppDimens.radiusControl),
-        border: Border.all(color: palette.danger.withValues(alpha: 0.35)),
-      ),
       child: Row(
         children: [
           Icon(Icons.info_outline_rounded, color: palette.danger, size: 20),
@@ -411,7 +457,7 @@ class _Banner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: TextStyle(color: palette.text, fontSize: 14, height: 1.35),
+              style: TextStyle(color: palette.text, fontSize: 13.5, height: 1.35),
             ),
           ),
         ],

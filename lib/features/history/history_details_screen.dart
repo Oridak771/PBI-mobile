@@ -7,6 +7,8 @@ import '../../core/providers.dart';
 import '../../core/theme/app_palette.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/glass.dart';
+import '../../core/widgets/report_tile.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../core/widgets/user_avatar.dart';
 import '../../data/models/history.dart';
@@ -59,8 +61,9 @@ class _HistoryDetailsScreenState extends ConsumerState<HistoryDetailsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => GlassScaffold(
     body: SafeArea(
+      bottom: false,
       child: Column(
         children: [
           const ScreenHeader(title: 'Historique détaillé'),
@@ -90,7 +93,7 @@ class _HistoryDetailsScreenState extends ConsumerState<HistoryDetailsScreen> {
                       SectionHeader(
                         'Consultations',
                         count: data.history.length,
-                        padding: const EdgeInsets.fromLTRB(2, 20, 2, 8),
+                        padding: const EdgeInsets.fromLTRB(4, 20, 2, 8),
                       ),
                       if (data.history.isEmpty)
                         const EmptyText(
@@ -124,7 +127,7 @@ class _UserBlock extends StatelessWidget {
       child: Row(
         children: [
           UserAvatar(
-            size: 56,
+            size: 52,
             photoUrl: user.photoUrl,
             initials: user.initials,
             color: user.avatarColor,
@@ -168,11 +171,11 @@ class HistoryDetailRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     return AppCard(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(13),
       child: Row(
         children: [
-          const IconWell(Icons.insights_rounded),
+          ReportIconTile(name: item.reportName),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -182,16 +185,16 @@ class HistoryDetailRow extends StatelessWidget {
                   item.path,
                   style: TextStyle(
                     color: palette.text,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   formatHistoryLine(item.openedAt, item.durationSeconds),
                   style: TextStyle(
                     color: palette.textMuted,
-                    fontSize: 13,
+                    fontSize: 11.5,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),

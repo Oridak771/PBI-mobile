@@ -67,6 +67,31 @@ class Catalog {
 
   bool isFavorite(int reportId) => favoriteIds.contains(reportId);
 
+  /// Section holding [group] (`null` when unknown).
+  CatalogSection? sectionOf(CatalogGroup group) {
+    for (final s in sections) {
+      if (s.groups.any((g) => g.key == group.key)) return s;
+    }
+    return null;
+  }
+
+  /// Distinct known reports of [group], in tab order, each with the first
+  /// tab listing it.
+  List<(Report, GroupTab)> reportsOfGroup(CatalogGroup group) {
+    final seen = <int>{};
+    return [
+      for (final tab in group.tabs)
+        for (final id in tab.reportIds)
+          if (reports[id] != null && seen.add(id)) (reports[id]!, tab),
+    ];
+  }
+
+  /// Number of distinct known reports of [group].
+  int reportCountOf(CatalogGroup group) => reportsOfGroup(group).length;
+
+  /// Number of known reports of [tab].
+  int reportCountOfTab(GroupTab tab) => reportsFor(tab).length;
+
   /// Reports of a tab, in the tab's order, skipping unknown ids.
   List<Report> reportsFor(GroupTab tab) => [
     for (final id in tab.reportIds)
@@ -247,6 +272,7 @@ class Report {
     this.phone,
     this.modifiedAt,
     this.favorite = false,
+    this.hasMobileLayout = false,
   });
 
   factory Report.fromJson(Json json) => Report(
@@ -259,6 +285,7 @@ class Report {
     phone: PhoneEdition.tryParse(json['phone']),
     modifiedAt: asDate(json['modified_at']),
     favorite: asBool(json['favorite']),
+    hasMobileLayout: asBool(json['has_mobile_layout']),
   );
 
   final int id;
@@ -273,7 +300,14 @@ class Report {
   final DateTime? modifiedAt;
   final bool favorite;
 
+  /// `has_mobile_layout`: the .pbix has a Power BI phone layout (the viewer
+  /// can show the "Vue mobile"). Defaults to `false`.
+  final bool hasMobileLayout;
+
   bool get hasPhoneEdition => phone != null;
+
+  /// Shown as "Vue mobile" in the lists: a phone layout or a phone edition.
+  bool get hasMobileView => hasMobileLayout || phone != null;
 
   Report copyWith({int? id, bool? favorite}) => Report(
     id: id ?? this.id,
@@ -285,6 +319,7 @@ class Report {
     phone: phone,
     modifiedAt: modifiedAt,
     favorite: favorite ?? this.favorite,
+    hasMobileLayout: hasMobileLayout,
   );
 }
 

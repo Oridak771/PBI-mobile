@@ -14,6 +14,7 @@ import '../../core/widgets/user_avatar.dart';
 import '../../data/models/history.dart';
 import '../auth/session_controller.dart';
 import 'history_details_screen.dart';
+import '../../core/widgets/glass.dart';
 
 /// "Historique": admins see every user (legacy HistoriqueActivity), other
 /// users go straight to their own detailed history.
@@ -154,24 +155,20 @@ class _AdminHistoryScreenState extends ConsumerState<_AdminHistoryScreen> {
     }
     final palette = context.palette;
     final filtered = _q.isNotEmpty || _company.isNotEmpty;
-    return Scaffold(
+    return GlassScaffold(
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             ScreenHeader(
               title: 'Historique',
-              action: IconButton(
+              action: GlassIconButton(
                 tooltip: 'Filtre',
+                size: 40,
                 onPressed: _openFilter,
-                icon: Badge(
-                  isLabelVisible: filtered,
-                  smallSize: 8,
-                  backgroundColor: palette.primary,
-                  child: Icon(
-                    Icons.filter_list_rounded,
-                    color: filtered ? palette.primaryText : palette.textMuted,
-                  ),
-                ),
+                icon: Icons.filter_list_rounded,
+                color: filtered ? palette.primaryText : palette.text,
+                badge: filtered ? GlowDot(color: palette.primaryText) : null,
               ),
             ),
             Expanded(child: body),
@@ -196,9 +193,9 @@ class HistoryUserRow extends StatelessWidget {
     final last = entry.last;
     final muted = TextStyle(color: palette.textMuted, fontSize: 13);
     return AppCard(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       onTap: onTap,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(13),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -238,8 +235,8 @@ class HistoryUserRow extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: palette.surfaceAlt,
-                borderRadius: BorderRadius.circular(AppDimens.radiusControl),
+                color: palette.glassSelected,
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -276,7 +273,7 @@ Future<(String, String)?> showHistoryFilterSheet(
   BuildContext context, {
   String q = '',
   String company = '',
-}) => showModalBottomSheet<(String, String)>(
+}) => showGlassSheet<(String, String)>(
   context: context,
   isScrollControlled: true,
   builder: (_) => HistoryFilterSheet(q: q, company: company),

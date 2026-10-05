@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_palette.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/asset_slots.dart';
+import '../../core/widgets/glass.dart';
 import '../../data/models/remote_config.dart';
 import '../auth/login_screen.dart';
 import '../auth/session_controller.dart';
@@ -78,7 +79,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     }
     if (!mounted) return;
     if (loggedIn && fromNotification) {
-      ref.read(shellProvider.notifier).selectTab(ShellTab.notifications);
+      ref.read(shellProvider.notifier).requestNotifications();
     }
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
@@ -90,13 +91,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     );
   }
 
-  /// Always dark, like the Android launch screen.
+  /// Always dark, like the Android launch screen, on the glass background.
   @override
   Widget build(BuildContext context) => const AnnotatedRegion<SystemUiOverlayStyle>(
     value: SystemUiOverlayStyle.light,
     child: Scaffold(
       backgroundColor: AppColors.splashBackground,
-      body: Stack(
+      body: GlassBackground(
+        palette: AppPalette.dark,
+        child: Stack(
         children: [
           Positioned.fill(
             child: Padding(
@@ -124,6 +127,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             ),
           ),
         ],
+        ),
       ),
     ),
   );

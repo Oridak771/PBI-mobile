@@ -13,8 +13,9 @@ flutter build apk --debug --dart-define=ENABLE_DEMO_MODE=true
 flutter build apk --release --dart-define=API_BASE_URL=http://10.10.10.53:8222
 ```
 
-Version: `pubspec.yaml` `version: 3.4.0+11` (versionName 3.4.0, versionCode 11;
-3.4 brings the platform's ticket system ("Tickets") and adaptive tablet
+Version: `pubspec.yaml` `version: 4.0.0+12` (versionName 4.0.0, versionCode 12;
+4.0 is the Portail BI glass redesign (4 tabs, notifications behind the
+Accueil bell, search, récents, group chips); 3.4 brought the platform's ticket system ("Tickets") and adaptive tablet
 layouts; 3.3 draws the Power BI mobile layout of PBIRS reports with
 `flutter_inappwebview`, see "Power BI mobile layout"; 3.2.0+9 added the
 fingerprint app lock and "Se souvenir de moi"; 3.1.0+8 brought the
@@ -268,7 +269,7 @@ over plain HTTP it is protected only by the internal network. Move
 
 ## Notifications (no Firebase)
 
-- **Foreground**: the Notification tab badge shows `unread_count`. While the app
+- **Foreground**: the green dot on Accueil's bell reflects `unread_count`. While the app
   is in the foreground it polls `notifications/unread-count/` every
   `config.notification_poll_seconds` (min 15 s) and immediately on resume; the
   catalog and the notification list also refresh it.
@@ -280,7 +281,8 @@ over plain HTTP it is protected only by the internal network. Move
   `#6E8F4F`, BigText, title = notification title, body = message) and stores
   `latest_id`. The first poll after login only records `latest_id` (no replay
   of old notifications); items seen in the foreground are not raised again.
-- Tapping a notification opens the app on the Notification tab.
+- Tapping a notification opens the app on the notifications screen (the bell's
+  screen).
 - Android 13+: `POST_NOTIFICATIONS` is requested when the shell opens. Manifest
   entries: `INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS`,
   `RECEIVE_BOOT_COMPLETED`, plus `<queries>` for `https`/`http`/`mailto`
@@ -292,10 +294,28 @@ over plain HTTP it is protected only by the internal network. Move
 
 ## Theme and image assets
 
-Colours come from `AppPalette` (`lib/core/theme/app_palette.dart`, light and
-dark tokens of the Portail BI web platform); `AppColors` only keeps fixed brand
-values (green, splash background, notification accent). The splash and the
-Android launch screen stay dark.
+Since 4.0 the app uses the Portail BI **glass** design (approved image
+`docs/design/portail_bi_glass.png`, source `docs/design/mockup.html`, renders
+of the implementation in `docs/design/implementation/`). Colours come from
+`AppPalette` (`lib/core/theme/app_palette.dart`, light and dark glass tokens:
+background, glows, glass fill / border / highlight, green gradient, text,
+tile tints); `AppColors` only keeps fixed brand values (green, splash
+background `#0C0E11`, notification accent). The splash and the Android launch
+screen (`cbi_background` = `#0C0E11`) stay dark.
+
+Glass building blocks (`lib/core/widgets/glass.dart`): `GlassBackground`,
+`GlassPanel` (`blur: true` = `BackdropFilter`, static chrome only),
+`GradientButton`, `GlassChip`, `GlassSegmentedBar`, `GlassIconButton`,
+`GlowDot`, `showGlassSheet`, `GlassScaffold`. Report icon tiles:
+`lib/core/widgets/report_tile.dart`.
+
+Performance notes (mid-range Android): backdrop blur is never used inside
+scrolling lists or grids; blurred surfaces sit behind a `RepaintBoundary`; the
+background is a static `CustomPaint` in its own repaint boundary; shadows and
+glows are stacked translucent shapes (no mask filter, no save layer).
+
+Catalog field used by the lists: `reports[].has_mobile_layout` (bool, default
+`false`) → "Vue mobile" meta line (also shown when `phone` is set).
 
 Image slots are in `lib/core/assets.dart`:
 
@@ -303,9 +323,9 @@ Image slots are in `lib/core/assets.dart`:
 |---|---|---|
 | `AppAssets.splashLogo` | `brand/pbi_mark_on_dark.png` (always dark) | "CBI" text |
 | `AppAssets.loginLogo(brightness)` | `brand/portail_bi_logo[_on_dark].png` | "GSH" text |
-| `AppAssets.headerLogo(brightness)` | `brand/pbi_mark[_on_dark].png` | "GSH" text |
+| `AppAssets.headerLogo(brightness)` | `brand/pbi_mark[_on_dark].png` (not shown since 4.0) | "GSH" text |
 | `AppAssets.aboutLogo(brightness)` | `brand/portail_bi_logo[_on_dark].png` | "CBI" text |
-| `AppAssets.footerLogo` | not chosen (`null`) | nothing |
+| `AppAssets.footerLogo` | not chosen (`null`): the login footer is the text "Cellule Business Intelligence · GSH" | nothing |
 | `AppAssets.codeImages[<CODE or name>]` | empty | code / initials tile |
 | pôle / société cards | catalog `logo_url` (network, cached) | code / initials tile |
 

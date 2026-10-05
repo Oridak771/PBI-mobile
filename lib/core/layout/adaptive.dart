@@ -141,3 +141,19 @@ abstract final class AppOrientations {
     }
   }
 }
+
+/// Height covered by the shell's floating tab bar at the bottom of the
+/// screen: scrolling content of the shell tabs adds it to its bottom padding
+/// so the last items can scroll above the bar. `0` outside the shell and on
+/// tablets (navigation rail).
+class BottomBarInset extends InheritedWidget {
+  const BottomBarInset({super.key, required this.value, required super.child});
+
+  final double value;
+
+  static double of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<BottomBarInset>()?.value ?? 0;
+
+  @override
+  bool updateShouldNotify(BottomBarInset oldWidget) => oldWidget.value != value;
+}

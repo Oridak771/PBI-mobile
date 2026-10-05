@@ -11,39 +11,47 @@ import 'support/test_app.dart';
 
 void main() {
   group('palette', () {
-    test('dark tokens match the PBI web platform', () {
+    test('dark tokens match the approved glass mockup', () {
       const p = AppPalette.dark;
-      expect(p.background, const Color(0xFF111318));
-      expect(p.surface, const Color(0xFF1C1D22));
-      expect(p.surfaceAlt, const Color(0xFF25262D));
-      expect(p.border, const Color(0xFF34353D));
-      expect(p.text, const Color(0xFFF1F2F4));
-      expect(p.textMuted, const Color(0xFFA8ABB4));
-      expect(p.textSubtle, const Color(0xFF8F9097));
+      expect(p.background, const Color(0xFF0C0E11));
+      expect(p.backgroundTop, const Color(0xFF121519));
+      expect(p.text, const Color(0xFFF5F6F8));
+      // rgba(235,238,243,.62)
+      expect(p.textMuted, const Color(0x9EEBEEF3));
       expect(p.primary, const Color(0xFFA5CF4B));
-      expect(p.onPrimary, const Color(0xFF1C1D22));
-      expect(p.primaryText, const Color(0xFFA5CF4B));
-      expect(p.danger, const Color(0xFFEF4444));
-      expect(p.success, const Color(0xFF42B883));
+      expect(p.onPrimary, const Color(0xFF10140A));
+      expect(p.primaryText, const Color(0xFFB9E06A));
+      expect(p.primaryBright, const Color(0xFFC8EA82));
+      expect(p.success, const Color(0xFF8EE0B0));
+      // Glass: white 14% -> 4%, white 16% border, white 28% highlight.
+      expect(p.glassTop, const Color(0x24FFFFFF));
+      expect(p.glassBottom, const Color(0x0AFFFFFF));
+      expect(p.glassBorder, const Color(0x29FFFFFF));
+      expect(p.glassHighlight, const Color(0x47FFFFFF));
+      // Glows: green .55, teal .40, blue .32.
+      expect(p.glowGreen, const Color(0x8CA5CF4B));
+      expect(p.glowTeal, const Color(0x6626A69A));
+      expect(p.glowBlue, const Color(0x527CC4E8));
+      expect(p.gradientTop, const Color(0xFFB6DD62));
+      expect(p.gradientBottom, const Color(0xFF93BF3A));
     });
 
-    test('light tokens match the PBI web platform', () {
+    test('light tokens: same glass language on a pale background', () {
       const p = AppPalette.light;
-      expect(p.background, const Color(0xFFF5F5F5));
-      expect(p.surface, const Color(0xFFFFFFFF));
-      expect(p.surfaceAlt, const Color(0xFFF1F2F4));
-      expect(p.border, const Color(0xFFE4E4E6));
-      expect(p.text, const Color(0xFF2A2B30));
+      expect(p.background, const Color(0xFFF3F5F8));
+      expect(p.text, const Color(0xFF1B1E24));
       expect(p.textMuted, const Color(0xFF5F6168));
-      expect(p.textSubtle, const Color(0xFF8F9097));
       expect(p.primary, const Color(0xFFA5CF4B));
-      expect(p.onPrimary, const Color(0xFF1C1D22));
-      expect(p.primaryText, const Color(0xFF71952B));
-      expect(p.danger, const Color(0xFFDC2626));
-      expect(p.success, const Color(0xFF16A34A));
+      expect(p.primaryText, const Color(0xFF5E8A1F));
+      // White 60-70% frosted glass, glows at a lower alpha than in dark.
+      expect(p.glassTop.a, inInclusiveRange(0.6, 0.75));
+      expect(p.glassBottom.a, inInclusiveRange(0.55, 0.7));
+      expect(p.glowGreen.a, lessThan(AppPalette.dark.glowGreen.a));
+      expect(p.glowTeal.a, lessThan(AppPalette.dark.glowTeal.a));
+      expect(p.glowBlue.a, lessThan(AppPalette.dark.glowBlue.a));
     });
 
-    test('themes carry their palette and the flat web style', () {
+    test('themes carry their palette and the glass style', () {
       for (final brightness in Brightness.values) {
         final theme = buildAppTheme(brightness);
         final palette = theme.extension<AppPalette>()!;
@@ -53,7 +61,7 @@ void main() {
         expect(theme.colorScheme.primary, palette.primary);
         expect(theme.cardTheme.elevation, 0);
         expect(theme.snackBarTheme.behavior, SnackBarBehavior.floating);
-        expect(theme.navigationBarTheme.backgroundColor, palette.surface);
+        expect(theme.navigationBarTheme.backgroundColor, Colors.transparent);
         expect(theme.tabBarTheme.indicatorColor, palette.primary);
         expect(theme.tabBarTheme.labelColor, palette.primaryText);
         expect(theme.tabBarTheme.unselectedLabelColor, palette.textMuted);
@@ -138,7 +146,15 @@ void main() {
     expect(store.mode, ThemeMode.system);
 
     // Logout is a danger outlined button (below the Sécurité section).
-    await tester.scrollUntilVisible(find.byKey(const Key('logout-button')), 200);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('logout-button')),
+      200,
+      scrollable: find
+          .byWidgetPredicate(
+            (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+          )
+          .first,
+    );
     final logout = tester.widget<OutlinedButton>(
       find.byKey(const Key('logout-button')),
     );

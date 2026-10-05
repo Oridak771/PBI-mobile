@@ -15,6 +15,7 @@ import '../../core/storage/session_store.dart';
 import '../../core/theme/app_dimens.dart';
 import '../../core/theme/app_palette.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/glass.dart';
 import '../../data/models/catalog.dart';
 import '../../data/models/mobile_layout.dart';
 import '../../data/models/user.dart';
@@ -644,34 +645,35 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
             onChanged: _selectVariant,
           )
         : null;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: palette.background,
-        border: Border(bottom: BorderSide(color: palette.border)),
-      ),
+    // Glass chrome (restyle only): round glass buttons, blurred toggle.
+    return ColoredBox(
+      color: palette.backgroundTop,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           ScreenHeader(
             title: widget.report.name,
-            height: 52,
-            titleSize: 17,
+            height: 56,
+            titleSize: 16,
             onTitleLongPress: _showTechnicalInfo,
             action: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (wide && toggle != null)
-                  Padding(padding: const EdgeInsets.only(right: 4), child: toggle),
-                IconButton(
+                  Padding(padding: const EdgeInsets.only(right: 8), child: toggle),
+                GlassIconButton(
                   tooltip: 'Actualiser',
+                  size: 40,
                   onPressed: _refresh,
-                  icon: const Icon(Icons.refresh_rounded),
+                  icon: Icons.refresh_rounded,
                 ),
-                IconButton(
+                const SizedBox(width: 8),
+                GlassIconButton(
                   key: const Key('viewer-fullscreen'),
                   tooltip: 'Plein écran',
+                  size: 40,
                   onPressed: _enterFullscreen,
-                  icon: const Icon(Icons.fullscreen_rounded),
+                  icon: Icons.fullscreen_rounded,
                 ),
               ],
             ),
@@ -700,23 +702,27 @@ class _VariantToggle extends StatelessWidget {
   final ValueChanged<ReportVariant> onChanged;
 
   @override
-  Widget build(BuildContext context) => SegmentedButton<ReportVariant>(
+  Widget build(BuildContext context) => GlassSegmentedBar<ReportVariant>(
     key: const Key('viewer-variant'),
-    showSelectedIcon: false,
+    expand: true,
     segments: const [
-      ButtonSegment(
-        value: ReportVariant.mobile,
-        icon: Icon(Icons.smartphone_rounded, size: 18),
-        label: Text('Mobile'),
+      GlassSegment(
+        ReportVariant.mobile,
+        'Mobile',
+        icon: Icons.smartphone_rounded,
+        key: Key('viewer-variant-mobile'),
       ),
-      ButtonSegment(
-        value: ReportVariant.desktop,
-        icon: Icon(Icons.desktop_windows_outlined, size: 18),
-        label: Text('Bureau'),
+      GlassSegment(
+        ReportVariant.desktop,
+        'Bureau',
+        icon: Icons.desktop_windows_outlined,
+        key: Key('viewer-variant-desktop'),
       ),
     ],
     selected: {selected},
-    onSelectionChanged: (s) => onChanged(s.first),
+    onChanged: (v) {
+      if (v != selected) onChanged(v);
+    },
   );
 }
 

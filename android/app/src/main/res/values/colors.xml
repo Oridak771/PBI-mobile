@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Legacy GSH-CBI background (#1C1D22): no white flash before Flutter draws. -->
-    <color name="cbi_background">#1C1D22</color>
+    <!-- Glass background base (#0C0E11): no white flash before Flutter draws. -->
+    <color name="cbi_background">#0C0E11</color>
 </resources>

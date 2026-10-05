@@ -6,24 +6,32 @@ import '../../core/theme/app_dimens.dart';
 import '../../core/theme/app_palette.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/glass.dart';
 import '../../data/models/ticket.dart';
 
-/// Foreground / background of a status pill: open & in progress = primary
-/// tint, closed = success tint, rejected = danger tint.
+/// Foreground / background of a status pill: open = green, in progress =
+/// amber, closed = teal green, rejected = red (25% / 22% tints).
 ({Color fg, Color bg}) ticketStatusColors(AppPalette palette, String status) =>
     switch (status) {
       'closed' => (
         fg: palette.success,
-        bg: palette.success.withValues(alpha: 0.12),
+        bg: const Color(0xFF6FCF97).withValues(alpha: 0.22),
       ),
       'rejected' => (
         fg: palette.danger,
-        bg: palette.danger.withValues(alpha: 0.12),
+        bg: palette.danger.withValues(alpha: 0.22),
       ),
-      _ => (fg: palette.primaryText, bg: palette.primarySoft),
+      'in_progress' => (
+        fg: palette.isDark ? const Color(0xFFF3CD8F) : palette.warning,
+        bg: const Color(0xFFE8B86A).withValues(alpha: 0.25),
+      ),
+      _ => (
+        fg: palette.primaryBright,
+        bg: palette.primary.withValues(alpha: 0.25),
+      ),
     };
 
-/// Priority colour: high = danger, medium = amber, low = subtle.
+/// Priority colour: high = red, medium = amber, low = muted.
 Color ticketPriorityColor(AppPalette palette, String priority) =>
     switch (priority) {
       'high' => palette.danger,
@@ -52,7 +60,7 @@ class TicketStatusPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
         color: colors.bg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label.isEmpty ? status : label,
@@ -60,7 +68,7 @@ class TicketStatusPill extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: colors.fg,
-          fontSize: 12,
+          fontSize: 10.5,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -74,7 +82,7 @@ class TicketPriority extends StatelessWidget {
     super.key,
     required this.priority,
     this.label,
-    this.fontSize = 12,
+    this.fontSize = 10.5,
   });
 
   final String priority;
@@ -89,11 +97,11 @@ class TicketPriority extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
+        GlowDot(
           key: ValueKey('priority-dot-$priority'),
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          color: color,
+          size: 7,
+          glow: priority == 'high' ? 5 : 0,
         ),
         if (text != null && text.isNotEmpty) ...[
           const SizedBox(width: 5),
@@ -164,8 +172,9 @@ class PersonAvatar extends StatelessWidget {
   );
 }
 
-/// List row: title + status pill, priority / type / category, creator
-/// (admins), relative date and message count.
+/// Ticket glass card: status pill, "type · category", relative date;
+/// title; priority dot, creator (admins), assignee, attachment / message
+/// indicators.
 class TicketRow extends StatelessWidget {
   const TicketRow({
     super.key,
@@ -183,86 +192,105 @@ class TicketRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final muted = TextStyle(color: palette.textMuted, fontSize: 12.5);
+    final muted = TextStyle(color: palette.textMuted, fontSize: 10.5);
     final creator = ticket.createdBy?.name ?? '';
+    final assignee = ticket.assignedTo?.name ?? '';
+    final meta = [
+      if (ticket.ticketTypeLabel.isNotEmpty) ticket.ticketTypeLabel,
+      if (ticket.categoryLabel.isNotEmpty) ticket.categoryLabel,
+    ].join(' · ');
     return AppCard(
       key: ValueKey('ticket-row-${ticket.id}'),
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       onTap: onTap,
-      color: selected ? palette.primarySoft : null,
+      color: selected ? palette.primary.withValues(alpha: 0.16) : null,
       borderColor: selected ? palette.primary.withValues(alpha: 0.5) : null,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.all(13),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  ticket.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: palette.text,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    height: 1.25,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 110),
                 child: TicketStatusPill.of(ticket),
               ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  meta,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: muted,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(relativeShortFr(ticket.createdAt), style: muted),
             ],
           ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 10,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          const SizedBox(height: 9),
+          Text(
+            ticket.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: palette.text,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: 9),
+          Row(
             children: [
               TicketPriority(
                 priority: ticket.priority,
                 label: ticket.priorityLabel,
               ),
-              Text(ticket.ticketTypeLabel, style: muted),
-              Text(ticket.categoryLabel, style: muted),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
               Expanded(
                 child: Text(
                   [
                     if (showCreator && creator.isNotEmpty) creator,
-                    relativeTimeFr(ticket.createdAt),
+                    if (assignee.isNotEmpty) 'Assigné : $assignee',
                   ].join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: palette.textSubtle, fontSize: 12),
+                  style: muted.copyWith(height: 1.2),
+                ).withLeadingGap(),
+              ),
+              if (ticket.attachmentUrl != null) ...[
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.attach_file_rounded,
+                  size: 14,
+                  color: palette.textMuted,
+                  semanticLabel: 'Pièce jointe',
                 ),
-              ),
-              Icon(
-                Icons.chat_bubble_outline_rounded,
-                size: 14,
-                color: palette.textSubtle,
-                semanticLabel: 'Messages',
-              ),
-              const SizedBox(width: 3),
-              Text(
-                '${ticket.messagesCount}',
-                style: TextStyle(color: palette.textSubtle, fontSize: 12),
-              ),
+              ],
+              if (ticket.messagesCount > 0) ...[
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 13,
+                  color: palette.textMuted,
+                  semanticLabel: 'Messages',
+                ),
+                const SizedBox(width: 3),
+                Text('${ticket.messagesCount}', style: muted),
+              ],
             ],
           ),
         ],
       ),
     );
   }
+}
+
+extension on Text {
+  /// 8px gap before a non-empty text.
+  Widget withLeadingGap() => (data ?? '').isEmpty
+      ? const SizedBox.shrink()
+      : Padding(padding: const EdgeInsets.only(left: 8), child: this);
 }
 
 /// Attachment thumbnail (Bearer-authenticated); tap → full-screen viewer.

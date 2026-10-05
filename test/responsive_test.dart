@@ -70,7 +70,7 @@ void main() {
 
       testWidgets('login', (tester) async {
         await pump(tester, const LoginScreen());
-        expect(find.text('CONNEXION'), findsOneWidget);
+        expect(find.text('Se connecter'), findsOneWidget);
       });
 
       for (final tab in ShellTab.values) {
@@ -87,7 +87,7 @@ void main() {
           await tester.pumpAndSettle();
           final compact = size.width < 600;
           expect(
-            find.byType(NavigationBar),
+            find.byType(GlassTabBar),
             compact ? findsOneWidget : findsNothing,
           );
           expect(
@@ -119,9 +119,7 @@ void main() {
     });
   }
 
-  testWidgets('tablet home: société / pôle cards wrap, same card size', (
-    tester,
-  ) async {
+  testWidgets('tablet home: wider grid (more than 3 columns)', (tester) async {
     setWindowSize(tester, const Size(1024, 768));
     await tester.pumpWidget(
       testApp(
@@ -131,15 +129,15 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.byType(Wrap), findsWidgets);
+    await tester.tap(find.text('Société'));
+    await tester.pumpAndSettle();
     final cards = find.byType(GroupCard);
-    expect(tester.getSize(cards.first), const Size(88, 124));
-    // Several rows inside one section: more than one distinct y.
-    final ys = {
+    final first = tester.getTopLeft(cards.first).dy;
+    final firstRow = [
       for (final e in cards.evaluate())
-        tester.getTopLeft(find.byWidget(e.widget)).dy,
-    };
-    expect(ys.length, greaterThan(1));
+        if (tester.getTopLeft(find.byWidget(e.widget)).dy == first) e,
+    ];
+    expect(firstRow.length, greaterThan(3));
   });
 
   testWidgets('expanded tickets: list and detail side by side', (tester) async {
@@ -182,10 +180,10 @@ void main() {
     final container = ProviderScope.containerOf(
       tester.element(find.byType(ShellScreen)),
     );
-    container.read(shellProvider.notifier).selectTab(ShellTab.settings);
+    container.read(shellProvider.notifier).selectTab(ShellTab.profile);
     await tester.pumpAndSettle();
-    final activity = tester.getTopLeft(find.text('ACTIVITÉ'));
-    final appearance = tester.getTopLeft(find.text('APPARENCE'));
+    final activity = tester.getTopLeft(find.text('Activité'));
+    final appearance = tester.getTopLeft(find.text('Apparence'));
     expect(appearance.dx, greaterThan(activity.dx + 200));
     expect((appearance.dy - activity.dy).abs(), lessThan(4));
   });

@@ -1,79 +1,49 @@
 import 'package:flutter/material.dart';
 
-import '../../core/assets.dart';
 import '../../core/theme/app_dimens.dart';
 import '../../core/theme/app_palette.dart';
-import '../../core/widgets/asset_slots.dart';
 
-/// App bar area of the shell: optional green back arrow (inside group tabs),
-/// bold title in the text colour with a small green dot on root tabs, and
-/// the Portail BI mark on the right (theme-aware).
+/// Title row of the root tabs (Favoris, Tickets, Profil): bold 24 title with
+/// a slight negative letter spacing and an optional action on the right
+/// (e.g. the "Nouveau" gradient button of Tickets).
 class ShellHeader extends StatelessWidget {
-  const ShellHeader({super.key, required this.title, this.onBack});
+  const ShellHeader({super.key, required this.title, this.trailing});
 
   final String title;
-
-  /// Shows the back arrow when not null (inside group tabs only).
-  final VoidCallback? onBack;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final brightness = Theme.of(context).brightness;
-    return SizedBox(
-      height: AppDimens.shellHeaderHeight,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 58),
       child: Padding(
-        padding: EdgeInsets.only(
-          left: onBack == null ? AppDimens.page : 4,
-          right: AppDimens.page - 4,
+        padding: const EdgeInsets.fromLTRB(
+          AppDimens.page + 2,
+          10,
+          AppDimens.page,
+          4,
         ),
         child: Row(
           children: [
-            if (onBack != null)
-              IconButton(
-                key: const Key('shell-back'),
-                tooltip: 'Retour',
-                onPressed: onBack,
-                icon: Icon(
-                  Icons.arrow_back_rounded,
-                  color: palette.primaryText,
-                  semanticLabel: 'Retour',
-                ),
-              )
-            else
-              Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(right: 10, top: 2),
-                decoration: BoxDecoration(
-                  color: palette.primary,
-                  shape: BoxShape.circle,
-                ),
-              ),
             Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: palette.text,
-                  fontSize: onBack == null ? 26 : 22,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
-                  height: 1.1,
+              child: Semantics(
+                header: true,
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: palette.text,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                    height: 1.15,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: 36,
-              height: 36,
-              child: LogoSlot(
-                asset: AppAssets.headerLogo(brightness),
-                fallbackText: 'GSH',
-                fontSize: 16,
-              ),
-            ),
+            if (trailing != null) ...[const SizedBox(width: 12), trailing!],
           ],
         ),
       ),

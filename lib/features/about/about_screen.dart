@@ -8,6 +8,7 @@ import '../../core/theme/app_dimens.dart';
 import '../../core/theme/app_palette.dart';
 import '../../core/widgets/asset_slots.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/glass.dart';
 import '../../data/models/remote_config.dart';
 
 /// Legacy AboutAppAct.
@@ -21,7 +22,7 @@ class AboutScreen extends ConsumerWidget {
         ref.watch(remoteConfigProvider).value?.contact ?? const Contact();
     final palette = context.palette;
     final brightness = Theme.of(context).brightness;
-    return Scaffold(
+    return GlassScaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -33,6 +34,7 @@ class AboutScreen extends ConsumerWidget {
                   children: [
                     const SizedBox(height: 24),
                     SizedBox(
+                      width: 220,
                       height: 64,
                       child: LogoSlot(
                         asset: AppAssets.aboutLogo(brightness),
@@ -46,7 +48,8 @@ class AboutScreen extends ConsumerWidget {
                       style: TextStyle(
                         color: palette.text,
                         fontSize: 24,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -56,15 +59,15 @@ class AboutScreen extends ConsumerWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: palette.primarySoft,
-                        borderRadius: BorderRadius.circular(20),
+                        color: palette.primary.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
                         'V.$version',
                         style: TextStyle(
-                          color: palette.primaryText,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                          color: palette.primaryBright,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -143,7 +146,7 @@ class _SquareIconButton extends StatelessWidget {
         child: SizedBox(
           width: 64,
           height: 64,
-          child: Icon(icon, color: palette.primaryText, size: 30),
+          child: Icon(icon, color: palette.primaryText, size: 28),
         ),
       ),
     );

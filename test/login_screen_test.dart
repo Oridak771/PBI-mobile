@@ -63,12 +63,20 @@ void main() {
 
     expect(find.text('Email | AD 2000'), findsOneWidget);
     expect(find.text('Mot de Passe'), findsOneWidget);
-    expect(find.text('CONNEXION'), findsOneWidget);
-    expect(find.text('Accéder à votre session.'), findsOneWidget);
+    expect(find.text('Se connecter'), findsOneWidget);
+    expect(find.text('Vos tableaux de bord, partout'), findsOneWidget);
+    expect(find.text('Cellule Business Intelligence · GSH'), findsOneWidget);
+    // One blurred glass panel holds the form.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('login-panel')),
+        matching: find.byType(BackdropFilter),
+      ),
+      findsOneWidget,
+    );
     // Unauthenticated ticket creation is impossible: no "Signaler" link.
     expect(find.textContaining('Signaler'), findsNothing);
-    // Portail BI brand logo on top (dark lettering in the light theme); no
-    // footer logo has been chosen yet.
+    // Full Portail BI logo on top (dark lettering in the light theme).
     expect(assetImage(AppAssets.loginLogo(Brightness.light)), findsOneWidget);
     expect(AppAssets.loginLogo(Brightness.light), AppAssets.portailLogoOnLight);
     expect(find.text('CBI'), findsNothing);
@@ -81,12 +89,15 @@ void main() {
     );
     expect(password.obscureText, isTrue);
     expect(password.style?.color, AppPalette.light.text);
-    // Filled input, no underline, green 1.5px border on focus.
+    // Glass input, green (70%) 1.5px border on focus.
     final theme = Theme.of(tester.element(find.byType(TextField).first));
     final inputs = theme.inputDecorationTheme;
     expect(inputs.filled, isTrue);
     expect(inputs.fillColor, AppPalette.light.surfaceAlt);
-    expect(inputs.focusedBorder?.borderSide.color, AppPalette.light.primary);
+    expect(
+      inputs.focusedBorder?.borderSide.color,
+      AppPalette.light.focusBorder,
+    );
     expect(inputs.focusedBorder?.borderSide.width, 1.5);
     expect(inputs.focusedBorder, isA<OutlineInputBorder>());
   });
@@ -94,6 +105,16 @@ void main() {
   testWidgets('dark theme uses the light-lettered logo', (tester) async {
     await pumpLogin(tester, FakeRepository(), themeMode: ThemeMode.dark);
     expect(assetImage(AppAssets.portailLogoOnDark), findsOneWidget);
+    expect(
+      AppAssets.portailLogoOnDark,
+      'assets/images/brand/portail_bi_logo_on_dark.png',
+    );
+    expect(
+      AppAssets.portailLogoOnLight,
+      'assets/images/brand/portail_bi_logo.png',
+    );
+    // Shown ~220 wide.
+    expect(tester.getSize(find.byType(Image)).width, lessThanOrEqualTo(220));
     expect(assetImage(AppAssets.portailLogoOnLight), findsNothing);
     final password = tester.widget<TextField>(
       find.descendant(
@@ -106,7 +127,7 @@ void main() {
 
   testWidgets('validates required fields', (tester) async {
     await pumpLogin(tester, FakeRepository());
-    await tester.tap(find.text('CONNEXION'));
+    await tester.tap(find.text('Se connecter'));
     await tester.pump();
     expect(find.text('Username obligatoire'), findsOneWidget);
     expect(find.text('Mot de passe obligatoire'), findsOneWidget);
@@ -122,7 +143,7 @@ void main() {
     await pumpLogin(tester, repo);
     await tester.enterText(find.byType(TextField).first, 'H0017549');
     await tester.enterText(find.byType(TextField).last, 'wrong');
-    await tester.tap(find.text('CONNEXION'));
+    await tester.tap(find.text('Se connecter'));
     await tester.pumpAndSettle();
     expect(find.text('Email ou mot de passe invalide'), findsOneWidget);
   });
@@ -132,7 +153,7 @@ void main() {
     await pumpLogin(tester, repo);
     await tester.enterText(find.byType(TextField).first, 'H0017549');
     await tester.enterText(find.byType(TextField).last, 'secret');
-    await tester.tap(find.text('CONNEXION'));
+    await tester.tap(find.text('Se connecter'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('Vérifiez votre connexion internet'), findsOneWidget);
@@ -189,7 +210,7 @@ void main() {
       await tester.pump();
       await tester.enterText(find.byType(TextField).last, 'typed');
       await tester.tap(find.text('Se souvenir de moi'));
-      await tester.tap(find.text('CONNEXION'));
+      await tester.tap(find.text('Se connecter'));
       await tester.pumpAndSettle();
       expect(repo.logins.single, ('H0017549', 'typed'));
       expect(find.byType(ShellScreen), findsOneWidget);
@@ -201,7 +222,7 @@ void main() {
       await pumpLogin(tester, FakeRepository(), remembered: remembered);
       await tester.enterText(find.byType(TextField).first, ' H0017549 ');
       await tester.enterText(find.byType(TextField).last, 'pw');
-      await tester.tap(find.text('CONNEXION'));
+      await tester.tap(find.text('Se connecter'));
       await tester.pumpAndSettle();
       final kept = await remembered.read();
       expect(kept?.username, 'H0017549');
@@ -226,7 +247,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(
-          find.text('Connexion par empreinte'),
+          find.byTooltip('Connexion par empreinte'),
           shown ? findsOneWidget : findsNothing,
         );
       });
@@ -289,7 +310,7 @@ void main() {
     Future<void> loginOnce(WidgetTester tester) async {
       await tester.enterText(find.byType(TextField).first, 'H0017549');
       await tester.enterText(find.byType(TextField).last, 'pw');
-      await tester.tap(find.text('CONNEXION'));
+      await tester.tap(find.text('Se connecter'));
       await tester.pumpAndSettle();
     }
 

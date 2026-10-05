@@ -19,7 +19,7 @@ class GroupLogo extends ConsumerWidget {
     this.logoUrl,
     this.assetCode,
     this.assetName,
-    this.size = AppDimens.groupTile,
+    this.size = AppDimens.groupLogo,
   });
 
   /// Code / initials shown when there is no logo.
@@ -46,13 +46,13 @@ class GroupLogo extends ConsumerWidget {
   }
 }
 
-/// [image] contained in a white rounded square (8 padding).
+/// [image] contained in a white (92%) rounded square.
 class LogoTile extends StatelessWidget {
   const LogoTile({
     super.key,
     required this.image,
     required this.fallback,
-    this.size = AppDimens.groupTile,
+    this.size = AppDimens.groupLogo,
   });
 
   final ImageProvider image;
@@ -62,7 +62,7 @@ class LogoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final radius = BorderRadius.circular(size * 0.22);
+    final radius = BorderRadius.circular(size * 14 / 44);
     return Image(
       image: image,
       width: size,
@@ -76,11 +76,12 @@ class LogoTile extends StatelessWidget {
           key: loaded ? const Key('group-logo-loaded') : null,
           width: size,
           height: size,
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(size * 0.14),
           decoration: BoxDecoration(
-            color: loaded ? Colors.white : palette.surfaceAlt,
+            color: loaded
+                ? Colors.white.withValues(alpha: 0.92)
+                : palette.surfaceAlt,
             borderRadius: radius,
-            border: Border.all(color: palette.border),
           ),
           child: AnimatedOpacity(
             opacity: loaded ? 1 : 0,
@@ -99,7 +100,7 @@ class InitialsTile extends StatelessWidget {
   const InitialsTile({
     super.key,
     required this.label,
-    this.size = AppDimens.groupTile,
+    this.size = AppDimens.groupLogo,
   });
 
   final String label;
@@ -112,11 +113,10 @@ class InitialsTile extends StatelessWidget {
       key: const Key('group-initials'),
       width: size,
       height: size,
-      padding: const EdgeInsets.all(6),
+      padding: EdgeInsets.all(size * 0.12),
       decoration: BoxDecoration(
         color: palette.primarySoft,
-        borderRadius: BorderRadius.circular(size * 0.22),
-        border: Border.all(color: palette.primary.withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(size * 14 / 44),
       ),
       alignment: Alignment.center,
       child: FittedBox(
@@ -125,10 +125,9 @@ class InitialsTile extends StatelessWidget {
           label.isEmpty ? '?' : label,
           maxLines: 1,
           style: TextStyle(
-            color: palette.primaryText,
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.3,
+            color: palette.primaryBright,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),

@@ -417,8 +417,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Tickets'), findsOneWidget);
-      expect(find.text('Nouveau ticket'), findsOneWidget);
-      for (final label in ['Tous', 'Ouvert', 'En cours', 'Fermé', 'Rejeté']) {
+      expect(find.byKey(const Key('tickets-new')), findsOneWidget);
+      expect(find.text('Nouveau'), findsOneWidget);
+      for (final label in ['Tous', 'Ouverts', 'En cours', 'Fermés', 'Rejetés']) {
         expect(
           find.descendant(
             of: find.byKey(const Key('ticket-filters')),
@@ -467,10 +468,12 @@ void main() {
     });
 
     test('status and priority colours', () {
-      const p = AppPalette.light;
-      expect(ticketStatusColors(p, 'open').fg, p.primaryText);
-      expect(ticketStatusColors(p, 'in_progress').fg, p.primaryText);
-      expect(ticketStatusColors(p, 'closed').fg, p.success);
+      const p = AppPalette.dark;
+      // Ouvert green, En cours amber, Fermé #8EE0B0 on 22%, Rejeté red.
+      expect(ticketStatusColors(p, 'open').fg, const Color(0xFFC8EA82));
+      expect(ticketStatusColors(p, 'in_progress').fg, const Color(0xFFF3CD8F));
+      expect(ticketStatusColors(p, 'closed').fg, const Color(0xFF8EE0B0));
+      expect(ticketStatusColors(p, 'closed').bg.a, closeTo(0.22, 0.01));
       expect(ticketStatusColors(p, 'rejected').fg, p.danger);
       expect(ticketPriorityColor(p, 'high'), p.danger);
       expect(ticketPriorityColor(p, 'medium'), p.warning);
@@ -629,17 +632,27 @@ void main() {
     });
   });
 
-  testWidgets('Paramètre shows the "Tickets" entry', (tester) async {
+  testWidgets('Profil no longer lists Tickets (it is a tab now)', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(412, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       testApp(const SettingsView(), repo: FakeRepository()),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Tickets'), findsOneWidget);
+    expect(find.text('Profil'), findsOneWidget);
+    expect(find.text('Tickets'), findsNothing);
     expect(find.text('Mes demandes'), findsNothing);
-    await tester.tap(find.text('Tickets'));
+  });
+
+  testWidgets('"Nouveau" opens the creation form', (tester) async {
+    await tester.pumpWidget(
+      testApp(const TicketsScreen(inShell: true), repo: FakeRepository()),
+    );
     await tester.pumpAndSettle();
-    expect(find.byType(TicketsScreen), findsOneWidget);
+    await tester.tap(find.byKey(const Key('tickets-new')));
+    await tester.pumpAndSettle();
+    expect(find.text('Nouveau ticket'), findsOneWidget);
   });
 }

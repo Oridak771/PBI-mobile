@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_dimens.dart';
 import '../theme/app_palette.dart';
+import 'glass.dart';
 
 /// Legacy Toast → floating snackbar.
 void showToast(BuildContext context, String message) {
@@ -12,9 +13,8 @@ void showToast(BuildContext context, String message) {
     ..showSnackBar(SnackBar(content: Text(message)));
 }
 
-/// App bar area of the secondary screens (Historique, Tickets, viewer…):
-/// green back arrow, bold title in the text colour, optional action on the
-/// right.
+/// Header of the secondary screens (Historique, Tickets, viewer…): round
+/// glass back button, bold title, optional action on the right.
 class ScreenHeader extends StatelessWidget {
   const ScreenHeader({
     super.key,
@@ -22,15 +22,21 @@ class ScreenHeader extends StatelessWidget {
     this.onBack,
     this.action,
     this.height = AppDimens.screenHeaderHeight,
-    this.titleSize = 20,
+    this.titleSize = 18,
     this.onTitleLongPress,
+    this.subtitle,
+    this.showBack = true,
   });
 
   final String title;
+  final String? subtitle;
   final VoidCallback? onBack;
   final Widget? action;
   final double height;
   final double titleSize;
+
+  /// Hides the back button (root screens).
+  final bool showBack;
 
   /// Hidden gesture on the title (no visual affordance).
   final VoidCallback? onTitleLongPress;
@@ -38,36 +44,56 @@ class ScreenHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    return SizedBox(
-      height: height,
+    final sub = subtitle ?? '';
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: height),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.fromLTRB(AppDimens.page, 6, AppDimens.page, 6),
         child: Row(
           children: [
-            IconButton(
-              tooltip: 'Retour',
-              onPressed: onBack ?? () => Navigator.of(context).maybePop(),
-              icon: Icon(Icons.arrow_back_rounded, color: palette.primaryText),
-            ),
-            const SizedBox(width: 4),
+            if (showBack) ...[
+              GlassIconButton(
+                key: const Key('screen-back'),
+                tooltip: 'Retour',
+                size: 40,
+                icon: Icons.chevron_left_rounded,
+                iconSize: 24,
+                onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+              ),
+              const SizedBox(width: 12),
+            ],
             Expanded(
               child: GestureDetector(
                 key: const Key('screen-header-title'),
                 behavior: HitTestBehavior.opaque,
                 onLongPress: onTitleLongPress,
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: palette.text,
-                    fontSize: titleSize,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: palette.text,
+                        fontSize: titleSize,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    if (sub.isNotEmpty)
+                      Text(
+                        sub,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: palette.textMuted, fontSize: 11),
+                      ),
+                  ],
                 ),
               ),
             ),
-            ?action,
+            if (action != null) ...[const SizedBox(width: 8), action!],
           ],
         ),
       ),
@@ -75,15 +101,20 @@ class ScreenHeader extends StatelessWidget {
   }
 }
 
-/// Small upper-case, letter-spaced muted label with an optional count
-/// (home sections, notification groups, settings groups).
+/// Section title ("Récents", "Activité"…): bold 14, optional count pill and
+/// trailing action ("Tout voir").
 class SectionHeader extends StatelessWidget {
   const SectionHeader(
     this.title, {
     super.key,
     this.count,
     this.trailing,
-    this.padding = const EdgeInsets.fromLTRB(AppDimens.page, 16, AppDimens.page, 8),
+    this.padding = const EdgeInsets.fromLTRB(
+      AppDimens.page + 2,
+      16,
+      AppDimens.page + 2,
+      8,
+    ),
   });
 
   final String title;
@@ -94,58 +125,89 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    return Padding(
-      padding: padding,
-      child: Row(
-        children: [
-          Flexible(
+    final heading = Row(
+      children: [
+        Flexible(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: palette.text,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.1,
+            ),
+          ),
+        ),
+        if (count != null) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+            decoration: BoxDecoration(
+              color: palette.glassSelected,
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Text(
-              title.toUpperCase(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              '$count',
               style: TextStyle(
                 color: palette.textMuted,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.2,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          if (count != null) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-              decoration: BoxDecoration(
-                color: palette.surfaceAlt,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: palette.border),
-              ),
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  color: palette.textSubtle,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-          if (trailing == null)
-            const Spacer()
-          else ...[
-            const SizedBox(width: 8),
-            // Shrinks (ellipsis) on narrow screens / large fonts.
-            Expanded(
-              child: Align(alignment: Alignment.centerRight, child: trailing),
-            ),
-          ],
         ],
+      ],
+    );
+    return Padding(
+      padding: padding,
+      child: LayoutBuilder(
+        builder: (context, constraints) => Row(
+          children: [
+            Expanded(child: heading),
+            if (trailing != null) ...[
+              const SizedBox(width: 8),
+              // Right-aligned; shrinks (ellipsis) on narrow screens.
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * 0.6,
+                ),
+                child: trailing,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Flat surface with a 1px border (no elevation), optionally tappable.
+/// Small green text action ("Tout voir").
+class LinkText extends StatelessWidget {
+  const LinkText(this.text, {super.key, required this.onTap});
+
+  final String text;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(8),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: context.palette.primaryText, fontSize: 11.5),
+      ),
+    ),
+  );
+}
+
+/// Glass card (no backdrop blur: safe inside scrolling lists), optionally
+/// tappable.
 class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
@@ -163,35 +225,69 @@ class AppCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry margin;
   final double radius;
+
+  /// Flat fill replacing the glass gradient (selected / tinted cards).
   final Color? color;
   final Color? borderColor;
 
   @override
+  Widget build(BuildContext context) => Padding(
+    padding: margin,
+    child: GlassPanel(
+      borderRadius: BorderRadius.circular(radius),
+      fill: color,
+      borderColor: borderColor,
+      onTap: onTap,
+      padding: padding,
+      child: child,
+    ),
+  );
+}
+
+/// Glass panel holding rows separated by 1px dividers (report lists,
+/// settings groups).
+class GlassListPanel extends StatelessWidget {
+  const GlassListPanel({
+    super.key,
+    required this.children,
+    this.indent = 0,
+    this.padding = const EdgeInsets.symmetric(vertical: 4),
+  });
+
+  final List<Widget> children;
+  final double indent;
+  final EdgeInsetsGeometry padding;
+
+  @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(radius),
-      side: BorderSide(color: borderColor ?? palette.border),
-    );
-    return Padding(
-      padding: margin,
+    return GlassPanel(
+      borderRadius: BorderRadius.circular(AppDimens.radiusPanel),
+      padding: padding,
       child: Material(
-        color: color ?? palette.surface,
-        shape: shape,
-        clipBehavior: Clip.antiAlias,
-        child: onTap == null
-            ? Padding(padding: padding, child: child)
-            : InkWell(
-                onTap: onTap,
-                child: Padding(padding: padding, child: child),
-              ),
+        type: MaterialType.transparency,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, child) in children.indexed) ...[
+              if (i > 0)
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  indent: indent,
+                  color: palette.divider,
+                ),
+              child,
+            ],
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Leading rounded icon container of list rows (icon on a green tint by
-/// default).
+/// Leading rounded icon tile of list rows (green tint by default).
 class IconWell extends StatelessWidget {
   const IconWell(
     this.icon, {
@@ -214,15 +310,15 @@ class IconWell extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: background ?? palette.primarySoft,
-        borderRadius: BorderRadius.circular(AppDimens.radiusControl),
+        borderRadius: BorderRadius.circular(size * AppDimens.radiusTile / 40),
       ),
       alignment: Alignment.center,
-      child: Icon(icon, size: size * 0.55, color: color ?? palette.primaryText),
+      child: Icon(icon, size: size * 0.48, color: color ?? palette.primaryText),
     );
   }
 }
 
-/// Green heart used in report lists and favourites.
+/// Heart of the report rows: green when favourite, muted otherwise.
 class FavoriteHeart extends StatelessWidget {
   const FavoriteHeart({
     super.key,
@@ -239,9 +335,11 @@ class FavoriteHeart extends StatelessWidget {
     return IconButton(
       tooltip: favorite ? 'Retirer des favoris' : 'Ajouter aux favoris',
       onPressed: onPressed,
+      // Mockup: the same outlined heart, green when favourite.
       icon: Icon(
-        favorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-        color: favorite ? palette.primaryText : palette.textSubtle,
+        Icons.favorite_border_rounded,
+        size: 21,
+        color: favorite ? palette.primaryText : palette.textMuted,
       ),
     );
   }
@@ -310,10 +408,14 @@ class RetryMessage extends StatelessWidget {
             style: TextStyle(color: palette.textMuted, fontSize: 16),
           ),
           const SizedBox(height: 16),
-          OutlinedButton.icon(
+          GradientButton(
+            label: 'Réessayer',
+            icon: Icons.refresh_rounded,
             onPressed: onRetry,
-            icon: Icon(Icons.refresh_rounded, color: palette.primaryText),
-            label: const Text('Réessayer'),
+            expand: false,
+            height: 44,
+            fontSize: 14,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
           ),
         ],
       ),

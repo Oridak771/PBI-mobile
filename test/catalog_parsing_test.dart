@@ -49,6 +49,22 @@ void main() {
     expect(catalog.withFavorite(12, false).reports[12]!.phone?.id, 31);
   });
 
+  test('parses has_mobile_layout (bool, default false)', () {
+    expect(catalog.reports[15]!.hasMobileLayout, isTrue);
+    expect(catalog.reports[20]!.hasMobileLayout, isFalse, reason: 'absent');
+    expect(
+      Report.fromJson(const {'id': 1, 'has_mobile_layout': 'yes'}).hasMobileLayout,
+      isFalse,
+      reason: 'not a bool',
+    );
+    // "Vue mobile": phone layout or phone edition.
+    expect(catalog.reports[15]!.hasMobileView, isTrue);
+    expect(catalog.reports[12]!.hasMobileView, isTrue, reason: 'phone edition');
+    expect(catalog.reports[20]!.hasMobileView, isFalse);
+    // Kept by copyWith (favourite toggling).
+    expect(catalog.withFavorite(15, true).reports[15]!.hasMobileLayout, isTrue);
+  });
+
   test('open/ response carries the report with its phone edition', () {
     final opening = ReportOpening.fromJson({
       'view_id': 991,

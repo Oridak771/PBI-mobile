@@ -15,11 +15,13 @@ import '../../data/models/remote_config.dart';
 import '../about/about_screen.dart';
 import '../auth/session_controller.dart';
 import '../history/history_screen.dart';
+import '../shell/shell_header.dart';
 import '../tickets/ticket_create_screen.dart';
-import '../tickets/tickets_screen.dart';
 import 'security_settings.dart';
+import '../../core/widgets/glass.dart';
 
-/// "Paramètre" tab: profile card, grouped entries, Apparence, logout.
+/// "Profil" tab (former "Paramètre"): profile card, Activité, Sécurité,
+/// Apparence, Assistance, logout.
 class SettingsView extends ConsumerWidget {
   const SettingsView({super.key});
 
@@ -36,10 +38,10 @@ class SettingsView extends ConsumerWidget {
       child: Row(
         children: [
           UserAvatar(
-            size: 64,
+            size: 60,
+            brand: true,
             photoUrl: user?.photoUrl,
             initials: user?.initials ?? '',
-            color: user?.avatarColor,
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -52,15 +54,16 @@ class SettingsView extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: palette.text,
-                    fontSize: 18,
+                    fontSize: 17,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 if ((user?.description ?? '').isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     user!.description,
-                    style: TextStyle(color: palette.textMuted, fontSize: 14),
+                    style: TextStyle(color: palette.textMuted, fontSize: 12),
                   ),
                 ],
               ],
@@ -70,7 +73,7 @@ class SettingsView extends ConsumerWidget {
       ),
     );
     final activityAndSecurity = <Widget>[
-      const SectionHeader('Activité', padding: EdgeInsets.fromLTRB(2, 24, 2, 8)),
+      const SectionHeader('Activité', padding: _sectionPadding),
       SettingsGroup(
         children: [
           SettingsEntry(
@@ -78,20 +81,15 @@ class SettingsView extends ConsumerWidget {
             icon: Icons.history_rounded,
             onTap: () => push(const HistoryScreen()),
           ),
-          SettingsEntry(
-            'Tickets',
-            icon: Icons.confirmation_number_outlined,
-            onTap: () => push(const TicketsScreen()),
-          ),
         ],
       ),
-      const SectionHeader('Sécurité', padding: EdgeInsets.fromLTRB(2, 24, 2, 8)),
+      const SectionHeader('Sécurité', padding: _sectionPadding),
       const SecuritySettings(),
     ];
     final appearanceAndHelp = <Widget>[
-      const SectionHeader('Apparence', padding: EdgeInsets.fromLTRB(2, 24, 2, 8)),
+      const SectionHeader('Apparence', padding: _sectionPadding),
       const AppearanceSelector(),
-      const SectionHeader('Assistance', padding: EdgeInsets.fromLTRB(2, 24, 2, 8)),
+      const SectionHeader('Assistance', padding: _sectionPadding),
       SettingsGroup(
         children: [
           SettingsEntry(
@@ -115,21 +113,27 @@ class SettingsView extends ConsumerWidget {
         onPressed: () => confirmLogout(context, ref),
         style: OutlinedButton.styleFrom(
           foregroundColor: palette.danger,
-          side: BorderSide(color: palette.danger.withValues(alpha: 0.6)),
+          backgroundColor: palette.danger.withValues(alpha: 0.1),
+          minimumSize: const Size(64, 50),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(17),
+          ),
+          side: BorderSide(color: palette.danger.withValues(alpha: 0.45)),
         ),
         icon: const Icon(Icons.logout_rounded),
         label: const Text('Se déconnecter'),
       ),
     ];
 
-    return LayoutBuilder(
+    final bottom = BottomBarInset.of(context);
+    final list = LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         if (WindowSize.of(width).isExpanded) {
           // Expanded: the groups in two columns under the profile card.
           final gutter = math.max(AppDimens.page + 8, (width - 1100) / 2);
           return ListView(
-            padding: EdgeInsets.fromLTRB(gutter, 8, gutter, 32),
+            padding: EdgeInsets.fromLTRB(gutter, 8, gutter, 32 + bottom),
             children: [
               profile,
               Row(
@@ -155,12 +159,21 @@ class SettingsView extends ConsumerWidget {
         }
         final gutter = AdaptiveDimens.gutter(width);
         return ListView(
-          padding: EdgeInsets.fromLTRB(gutter, 8, gutter, 32),
+          padding: EdgeInsets.fromLTRB(gutter, 8, gutter, 32 + bottom),
           children: [profile, ...activityAndSecurity, ...appearanceAndHelp],
         );
       },
     );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const ShellHeader(title: 'Profil'),
+        Expanded(child: list),
+      ],
+    );
   }
+
+  static const _sectionPadding = EdgeInsets.fromLTRB(4, 22, 2, 8);
 }
 
 /// "Apparence": Système / Clair / Sombre, applied instantly and persisted.
@@ -170,56 +183,29 @@ class AppearanceSelector extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
-    return AppCard(
-      padding: const EdgeInsets.all(12),
-      child: SizedBox(
-        width: double.infinity,
-        child: SegmentedButton<ThemeMode>(
-          key: const Key('appearance-selector'),
-          showSelectedIcon: false,
-          segments: const [
-            ButtonSegment(
-              value: ThemeMode.system,
-              icon: Icon(Icons.brightness_auto_rounded, size: 18),
-              label: Text('Système'),
-            ),
-            ButtonSegment(
-              value: ThemeMode.light,
-              icon: Icon(Icons.light_mode_rounded, size: 18),
-              label: Text('Clair'),
-            ),
-            ButtonSegment(
-              value: ThemeMode.dark,
-              icon: Icon(Icons.dark_mode_rounded, size: 18),
-              label: Text('Sombre'),
-            ),
-          ],
-          selected: {mode},
-          onSelectionChanged: (s) =>
-              ref.read(themeModeProvider.notifier).set(s.first),
-        ),
-      ),
+    return GlassSegmentedBar<ThemeMode>(
+      key: const Key('appearance-selector'),
+      expand: true,
+      segments: const [
+        GlassSegment(ThemeMode.system, 'Système'),
+        GlassSegment(ThemeMode.light, 'Clair'),
+        GlassSegment(ThemeMode.dark, 'Sombre'),
+      ],
+      selected: {mode},
+      onChanged: ref.read(themeModeProvider.notifier).set,
     );
   }
 }
 
-/// Card holding settings entries separated by 1px dividers.
+/// Glass panel holding settings entries separated by 1px dividers.
 class SettingsGroup extends StatelessWidget {
   const SettingsGroup({super.key, required this.children});
 
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => AppCard(
-    child: Column(
-      children: [
-        for (final (i, child) in children.indexed) ...[
-          if (i > 0) const Divider(indent: 64),
-          child,
-        ],
-      ],
-    ),
-  );
+  Widget build(BuildContext context) =>
+      GlassListPanel(indent: 62, children: children);
 }
 
 /// Settings entry: icon well, label, chevron.
@@ -243,18 +229,18 @@ class SettingsEntry extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 56),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Row(
             children: [
               IconWell(icon, size: 36),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   text,
                   style: TextStyle(
                     color: palette.text,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -295,16 +281,16 @@ class SettingsSwitchEntry extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 56),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Row(
             children: [
               IconWell(
                 icon,
                 size: 36,
                 color: enabled ? null : palette.textSubtle,
-                background: enabled ? null : palette.surfaceAlt,
+                background: enabled ? null : palette.glassSelected,
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,15 +299,15 @@ class SettingsSwitchEntry extends StatelessWidget {
                       text,
                       style: TextStyle(
                         color: enabled ? palette.text : palette.textSubtle,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),
                       Text(
                         subtitle!,
-                        style: TextStyle(color: palette.textMuted, fontSize: 13),
+                        style: TextStyle(color: palette.textMuted, fontSize: 11.5),
                       ),
                     ],
                   ],
@@ -360,18 +346,18 @@ class SettingsValueEntry extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 56),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Row(
             children: [
               IconWell(icon, size: 36),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   text,
                   style: TextStyle(
                     color: palette.text,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -427,7 +413,7 @@ Future<void> confirmLogout(BuildContext context, WidgetRef ref) async {
 
 /// "Aide" bottom sheet ("Contactez-nous").
 Future<void> showHelpDialog(BuildContext context, Contact contact) =>
-    showModalBottomSheet<void>(
+    showGlassSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {
@@ -474,7 +460,9 @@ Future<void> showHelpDialog(BuildContext context, Contact contact) =>
                   ],
                 ),
                 const SizedBox(height: 20),
-                FilledButton.icon(
+                GradientButton(
+                  label: 'Envoyer une demande',
+                  icon: Icons.edit_note_rounded,
                   onPressed: () {
                     Navigator.pop(sheetContext);
                     Navigator.of(context).push(
@@ -484,8 +472,6 @@ Future<void> showHelpDialog(BuildContext context, Contact contact) =>
                       ),
                     );
                   },
-                  icon: const Icon(Icons.edit_note_rounded),
-                  label: const Text('Envoyer une demande'),
                 ),
                 const SizedBox(height: 8),
                 TextButton(

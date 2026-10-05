@@ -6,11 +6,42 @@ import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_palette.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/glass.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../data/models/notification.dart';
 import 'notifications_controller.dart';
 
-/// "Notification" tab: "Nouveau" (is_new) and "Déjà vu" (older) sections.
+/// Opens the notifications screen (bell of Accueil, notification taps).
+Future<void> openNotifications(
+  BuildContext context,
+  WidgetRef ref, {
+  bool refresh = true,
+}) {
+  if (refresh) ref.read(notificationsProvider.notifier).refresh();
+  return Navigator.of(context).push(
+    MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()),
+  );
+}
+
+/// Full screen of the notifications (glass header + [NotificationsView]).
+class NotificationsScreen extends StatelessWidget {
+  const NotificationsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => const GlassScaffold(
+    body: SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          ScreenHeader(title: 'Notifications'),
+          Expanded(child: NotificationsView()),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Notifications: "Nouveau" (is_new) and "Déjà vu" (older) sections.
 class NotificationsView extends ConsumerWidget {
   const NotificationsView({super.key});
 
@@ -47,7 +78,7 @@ class NotificationsView extends ConsumerWidget {
           SectionHeader(
             'Nouveau',
             count: recent.isEmpty ? null : recent.length,
-            padding: const EdgeInsets.fromLTRB(2, 8, 0, 6),
+            padding: const EdgeInsets.fromLTRB(4, 8, 0, 6),
             trailing: hasUnread
                 ? TextButton(
                     onPressed: () => run(controller.markAllRead()),
@@ -74,7 +105,7 @@ class NotificationsView extends ConsumerWidget {
           SectionHeader(
             'Déjà vu',
             count: older.isEmpty ? null : older.length,
-            padding: const EdgeInsets.fromLTRB(2, 20, 0, 10),
+            padding: const EdgeInsets.fromLTRB(4, 20, 0, 10),
           ),
           if (older.isEmpty) const EmptyText('Aucune notification', padding: 20),
           for (final n in older)
@@ -114,17 +145,17 @@ class NotificationRow extends StatelessWidget {
     final unread = !notification.isRead;
     final titleColor = unread ? palette.primaryText : palette.textMuted;
     return AppCard(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       onTap: onTap,
       borderColor: unread ? palette.primary.withValues(alpha: 0.45) : null,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(13),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           IconWell(
             iconFor(notification.kind),
-            color: unread ? palette.primaryText : palette.textSubtle,
-            background: unread ? palette.primarySoft : palette.surfaceAlt,
+            color: unread ? palette.primaryText : palette.textMuted,
+            background: unread ? palette.primarySoft : palette.glassSelected,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -140,26 +171,19 @@ class NotificationRow extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: titleColor,
-                          fontSize: 15,
-                          fontWeight: unread ? FontWeight.w700 : FontWeight.w500,
+                          fontSize: 13.5,
+                          fontWeight: unread ? FontWeight.w700 : FontWeight.w600,
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      relativeTimeFr(notification.createdAt),
-                      style: TextStyle(color: palette.textSubtle, fontSize: 12),
+                      relativeShortFr(notification.createdAt),
+                      style: TextStyle(color: palette.textMuted, fontSize: 10),
                     ),
                     if (unread) ...[
                       const SizedBox(width: 6),
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: palette.primary,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+                      GlowDot(color: palette.primaryText, size: 7, glow: 6),
                     ],
                   ],
                 ),
@@ -168,7 +192,7 @@ class NotificationRow extends StatelessWidget {
                   notification.message,
                   style: TextStyle(
                     color: unread ? palette.text : palette.textMuted,
-                    fontSize: 14,
+                    fontSize: 12.5,
                     height: 1.35,
                   ),
                 ),

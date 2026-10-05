@@ -74,6 +74,26 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // Consolidé (first section) is selected: no société logo requested yet.
+    expect(requested, isEmpty);
+    // Consolidé direction card without logo: code in the tile, name under it.
+    final dfc = find.byType(ConsolideCard);
+    expect(
+      find.descendant(of: dfc, matching: find.byType(InitialsTile)),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: dfc, matching: find.text('DFC')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: dfc,
+        matching: find.text('Direction Finance et Comptabilité'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: dfc, matching: find.text('2 rapports')), findsOneWidget);
+
+    await tester.tap(find.text('Société'));
+    await tester.pumpAndSettle();
     expect(requested, ['/mobile/v1/metadata/9/logo/?v=societe-3f2a9c1b7d4e']);
     final mdm = find.widgetWithText(GroupCard, 'MDM');
     expect(mdm, findsOneWidget, reason: 'name under the logo');
@@ -89,34 +109,26 @@ void main() {
       find.descendant(of: mdm, matching: find.byType(InitialsTile)),
       findsNothing,
     );
-    // Consolidé direction card without logo: code in the tile, name under it.
-    final dfc = find.byType(ConsolideCard);
-    expect(
-      find.descendant(of: dfc, matching: find.byType(InitialsTile)),
-      findsOneWidget,
-    );
-    expect(find.descendant(of: dfc, matching: find.text('DFC')), findsOneWidget);
-    expect(
-      find.descendant(
-        of: dfc,
-        matching: find.text('Direction Finance et Comptabilité'),
-      ),
-      findsOneWidget,
-    );
+    expect(find.descendant(of: mdm, matching: find.text('1 rapport')), findsOneWidget);
     expect(catalog.sections[1].groups.single.logoUrl, isNotNull);
   });
 
-  testWidgets('logo card: 88 wide, name limited to 2 lines, white tile', (
+  testWidgets('logo card: name limited to 2 lines, white 44 tile, count', (
     tester,
   ) async {
     await tester.pumpWidget(
       testApp(
         Center(
-          child: GroupCard(
-            code: 'MDM',
-            name: 'Société au nom beaucoup trop long pour tenir sur deux lignes',
-            logoUrl: '/logo',
-            onTap: () {},
+          child: SizedBox(
+            width: 120,
+            height: 130,
+            child: GroupCard(
+              code: 'MDM',
+              name: 'Société au nom beaucoup trop long pour tenir sur deux lignes',
+              logoUrl: '/logo',
+              reportCount: 6,
+              onTap: () {},
+            ),
           ),
         ),
         repo: FakeRepository(),
@@ -125,24 +137,38 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(tester.getSize(find.byType(GroupCard)).width, 88);
+    expect(find.text('6 rapports'), findsOneWidget);
     final name = tester.widget<Text>(find.textContaining('Société au nom'));
     expect(name.maxLines, 2);
     expect(name.overflow, TextOverflow.ellipsis);
     expect(name.textAlign, TextAlign.center);
-    expect(name.style?.fontSize, 12);
+    expect(name.style?.fontSize, 11.5);
     final tile = tester.widget<Container>(
       find.byKey(const Key('group-logo-loaded')),
     );
-    expect((tile.decoration! as BoxDecoration).color, Colors.white);
-    expect(tester.getSize(find.byKey(const Key('group-logo-loaded'))), const Size(64, 64));
+    expect(
+      (tile.decoration! as BoxDecoration).color,
+      Colors.white.withValues(alpha: 0.92),
+    );
+    expect(tester.getSize(find.byKey(const Key('group-logo-loaded'))), const Size(44, 44));
   });
 
   testWidgets('no logo_url → initials tile', (tester) async {
     var calls = 0;
     await tester.pumpWidget(
       testApp(
-        Center(child: GroupCard(code: 'PI', name: 'Pôle Industrie', onTap: () {})),
+        Center(
+          child: SizedBox(
+            width: 120,
+            height: 130,
+            child: GroupCard(
+              code: 'PI',
+              name: 'Pôle Industrie',
+              reportCount: 2,
+              onTap: () {},
+            ),
+          ),
+        ),
         repo: FakeRepository(),
         logoResolver: (_) {
           calls++;
@@ -162,11 +188,16 @@ void main() {
     await tester.pumpWidget(
       testApp(
         Center(
-          child: GroupCard(
-            code: 'MDM',
-            name: 'MDM',
-            logoUrl: '/mobile/v1/metadata/9/logo/?v=x',
-            onTap: () {},
+          child: SizedBox(
+            width: 120,
+            height: 130,
+            child: GroupCard(
+              code: 'MDM',
+              name: 'MDM',
+              logoUrl: '/mobile/v1/metadata/9/logo/?v=x',
+              reportCount: 1,
+              onTap: () {},
+            ),
           ),
         ),
         repo: FakeRepository(),

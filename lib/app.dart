@@ -9,6 +9,8 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_controller.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/session_controller.dart';
+import 'features/home/home_view.dart';
+import 'features/home/recents_controller.dart';
 import 'features/lock/app_lock_controller.dart';
 import 'features/lock/app_lock_gate.dart';
 import 'features/notifications/local_notifications.dart';
@@ -63,6 +65,8 @@ class _CbiAppState extends ConsumerState<CbiApp> {
       }
       ref.read(notificationPlatformProvider).stopBackgroundPolling();
       ref.invalidate(catalogProvider);
+      ref.invalidate(myHistoryProvider);
+      ref.invalidate(homeSectionProvider);
       ref.invalidate(notificationsProvider);
       ref.invalidate(unreadCountProvider);
       ref.invalidate(shellProvider);

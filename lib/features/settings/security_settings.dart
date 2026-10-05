@@ -7,6 +7,7 @@ import '../../core/theme/app_palette.dart';
 import '../../core/widgets/common.dart';
 import '../lock/app_lock_controller.dart';
 import 'settings_view.dart';
+import '../../core/widgets/glass.dart';
 
 /// "Sécurité": fingerprint lock and its delay.
 class SecuritySettings extends ConsumerStatefulWidget {
@@ -37,7 +38,7 @@ class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
   }
 
   Future<void> _pickDelay(LockDelay current) async {
-    final picked = await showModalBottomSheet<LockDelay>(
+    final picked = await showGlassSheet<LockDelay>(
       context: context,
       builder: (sheetContext) {
         final palette = sheetContext.palette;

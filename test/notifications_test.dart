@@ -48,11 +48,11 @@ void main() {
     await tester.pumpWidget(testApp(const NotificationsView(), repo: repo));
     await tester.pumpAndSettle();
 
-    expect(find.text('NOUVEAU'), findsOneWidget);
-    expect(find.text('DÉJÀ VU'), findsOneWidget);
+    expect(find.text('Nouveau'), findsOneWidget);
+    expect(find.text('Déjà vu'), findsOneWidget);
     expect(find.text('Tout marquer comme lu'), findsOneWidget);
-    final nouveauY = tester.getTopLeft(find.text('NOUVEAU')).dy;
-    final dejaVuY = tester.getTopLeft(find.text('DÉJÀ VU')).dy;
+    final nouveauY = tester.getTopLeft(find.text('Nouveau')).dy;
+    final dejaVuY = tester.getTopLeft(find.text('Déjà vu')).dy;
     final recentY = tester.getTopLeft(find.text('Accès')).dy;
     final olderY = tester.getTopLeft(find.text('Ancienne')).dy;
     expect(nouveauY < recentY && recentY < dejaVuY && dejaVuY < olderY, isTrue);

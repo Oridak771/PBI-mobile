@@ -4,9 +4,9 @@ import 'package:flutter/services.dart';
 import 'app_dimens.dart';
 import 'app_palette.dart';
 
-/// Material 3 theme reproducing the Portail BI web platform: flat surfaces,
-/// 1px borders instead of elevation, green primary, Roboto (the Android system
-/// font, nothing bundled).
+/// Material 3 theme of the Portail BI glass style: translucent glass
+/// surfaces over a glowing background (see `GlassBackground` / `GlassPanel`),
+/// green primary, Roboto (the Android system font, nothing bundled).
 ThemeData buildAppTheme([Brightness brightness = Brightness.dark]) =>
     buildThemeFromPalette(AppPalette.of(brightness));
 
@@ -50,7 +50,7 @@ ThemeData buildThemeFromPalette(AppPalette p) {
   final controlRadius = BorderRadius.circular(AppDimens.radiusControl);
   final cardShape = RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(AppDimens.radiusCard),
-    side: BorderSide(color: p.border),
+    side: BorderSide(color: p.glassBorder),
   );
   final sheetShape = RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(AppDimens.radiusSheet),
@@ -80,7 +80,7 @@ ThemeData buildThemeFromPalette(AppPalette p) {
     scaffoldBackgroundColor: p.background,
     canvasColor: p.background,
     textTheme: textTheme,
-    dividerColor: p.border,
+    dividerColor: p.divider,
     splashFactory: InkSparkle.splashFactory,
     appBarTheme: AppBarTheme(
       backgroundColor: p.background,
@@ -90,13 +90,13 @@ ThemeData buildThemeFromPalette(AppPalette p) {
       systemOverlayStyle: systemOverlayFor(p),
     ),
     cardTheme: CardThemeData(
-      color: p.surface,
+      color: p.glassBottom,
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: cardShape,
       clipBehavior: Clip.antiAlias,
     ),
-    dividerTheme: DividerThemeData(color: p.border, thickness: 1, space: 1),
+    dividerTheme: DividerThemeData(color: p.divider, thickness: 1, space: 1),
     iconTheme: IconThemeData(color: p.textMuted),
     progressIndicatorTheme: ProgressIndicatorThemeData(color: p.primary),
     textSelectionTheme: TextSelectionThemeData(
@@ -108,25 +108,25 @@ ThemeData buildThemeFromPalette(AppPalette p) {
       filled: true,
       fillColor: p.surfaceAlt,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      hintStyle: TextStyle(color: p.textSubtle),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+      hintStyle: TextStyle(color: p.textMuted, fontSize: 13.5),
       labelStyle: TextStyle(color: p.textMuted),
       floatingLabelStyle: TextStyle(color: p.primaryText),
       helperStyle: TextStyle(color: p.textSubtle),
       errorStyle: TextStyle(color: p.danger),
-      prefixIconColor: p.textSubtle,
-      suffixIconColor: p.textSubtle,
+      prefixIconColor: p.textMuted,
+      suffixIconColor: p.textMuted,
       border: OutlineInputBorder(
         borderRadius: controlRadius,
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(color: p.glassBorder),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: controlRadius,
-        borderSide: BorderSide(color: p.surfaceAlt),
+        borderSide: BorderSide(color: p.glassBorder),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: controlRadius,
-        borderSide: BorderSide(color: p.primary, width: 1.5),
+        borderSide: BorderSide(color: p.focusBorder, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: controlRadius,
@@ -145,7 +145,7 @@ ThemeData buildThemeFromPalette(AppPalette p) {
         disabledForegroundColor: p.onPrimary.withValues(alpha: 0.7),
         minimumSize: const Size(64, 48),
         shape: RoundedRectangleBorder(borderRadius: controlRadius),
-        textStyle: t(15, FontWeight.bold, letterSpacing: 0.4),
+        textStyle: t(15, FontWeight.w600),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -161,8 +161,9 @@ ThemeData buildThemeFromPalette(AppPalette p) {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: p.text,
+        backgroundColor: p.surfaceAlt,
         minimumSize: const Size(64, 48),
-        side: BorderSide(color: p.border),
+        side: BorderSide(color: p.glassBorder),
         shape: RoundedRectangleBorder(borderRadius: controlRadius),
         textStyle: t(15, FontWeight.w600),
       ),
@@ -183,9 +184,9 @@ ThemeData buildThemeFromPalette(AppPalette p) {
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(borderRadius: controlRadius),
         ),
-        side: WidgetStatePropertyAll(BorderSide(color: p.border)),
+        side: WidgetStatePropertyAll(BorderSide(color: p.glassBorder)),
         backgroundColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.selected) ? p.primary : p.surface,
+          (s) => s.contains(WidgetState.selected) ? p.primary : p.surfaceAlt,
         ),
         foregroundColor: WidgetStateProperty.resolveWith(
           (s) => s.contains(WidgetState.selected) ? p.onPrimary : p.textMuted,
@@ -197,61 +198,58 @@ ThemeData buildThemeFromPalette(AppPalette p) {
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: p.surface,
+      backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      height: 68,
-      indicatorColor: p.primary.withValues(alpha: 0.18),
+      height: AppDimens.tabBarHeight,
+      indicatorColor: p.glassSelected,
       indicatorShape: const StadiumBorder(),
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       iconTheme: WidgetStateProperty.resolveWith(
         (s) => IconThemeData(
-          size: 24,
-          color: s.contains(WidgetState.selected) ? p.primaryText : p.textMuted,
+          size: 21,
+          color: s.contains(WidgetState.selected)
+              ? p.primaryBright
+              : p.textMuted,
         ),
       ),
       labelTextStyle: WidgetStateProperty.resolveWith(
         (s) => TextStyle(
-          fontSize: 12,
-          fontWeight: s.contains(WidgetState.selected)
-              ? FontWeight.w600
-              : FontWeight.w500,
-          color: s.contains(WidgetState.selected) ? p.primaryText : p.textMuted,
+          fontSize: 10,
+          color: s.contains(WidgetState.selected)
+              ? p.primaryBright
+              : p.textMuted,
         ),
       ),
     ),
     navigationRailTheme: NavigationRailThemeData(
-      backgroundColor: p.surface,
+      backgroundColor: Colors.transparent,
       elevation: 0,
-      indicatorColor: p.primary.withValues(alpha: 0.18),
+      indicatorColor: p.glassSelected,
       indicatorShape: const StadiumBorder(),
       labelType: NavigationRailLabelType.all,
-      selectedIconTheme: IconThemeData(size: 24, color: p.primaryText),
-      unselectedIconTheme: IconThemeData(size: 24, color: p.textMuted),
+      selectedIconTheme: IconThemeData(size: 22, color: p.primaryBright),
+      unselectedIconTheme: IconThemeData(size: 22, color: p.textMuted),
       selectedLabelTextStyle: TextStyle(
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: FontWeight.w600,
-        color: p.primaryText,
+        color: p.primaryBright,
       ),
-      unselectedLabelTextStyle: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        color: p.textMuted,
-      ),
+      unselectedLabelTextStyle: TextStyle(fontSize: 11, color: p.textMuted),
     ),
     tabBarTheme: TabBarThemeData(
       labelColor: p.primaryText,
       unselectedLabelColor: p.textMuted,
       indicatorColor: p.primary,
       indicatorSize: TabBarIndicatorSize.label,
-      dividerColor: p.border,
+      dividerColor: p.divider,
       overlayColor: WidgetStatePropertyAll(p.primary.withValues(alpha: 0.08)),
       labelStyle: t(14, FontWeight.w600),
       unselectedLabelStyle: t(14, FontWeight.w500),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      backgroundColor: p.isDark ? p.surfaceAlt : p.text,
+      backgroundColor: p.isDark ? const Color(0xF0222730) : p.text,
       contentTextStyle: TextStyle(
         color: p.isDark ? p.text : p.surface,
         fontSize: 14,
@@ -261,14 +259,14 @@ ThemeData buildThemeFromPalette(AppPalette p) {
       insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       shape: RoundedRectangleBorder(
         borderRadius: controlRadius,
-        side: p.isDark ? BorderSide(color: p.border) : BorderSide.none,
+        side: p.isDark ? BorderSide(color: p.glassBorder) : BorderSide.none,
       ),
     ),
     dialogTheme: DialogThemeData(
-      backgroundColor: p.surface,
+      backgroundColor: p.sheet,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      shape: sheetShape.copyWith(side: BorderSide(color: p.border)),
+      shape: sheetShape.copyWith(side: BorderSide(color: p.glassBorder)),
       titleTextStyle: TextStyle(
         color: p.text,
         fontSize: 18,
@@ -276,27 +274,30 @@ ThemeData buildThemeFromPalette(AppPalette p) {
       ),
       contentTextStyle: TextStyle(color: p.textMuted, fontSize: 15, height: 1.4),
     ),
+    // Sheets are drawn as blurred glass by `showGlassSheet`; this is the
+    // opaque fallback of any other sheet.
     bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: p.surface,
+      backgroundColor: p.sheet,
       surfaceTintColor: Colors.transparent,
-      modalBackgroundColor: p.surface,
+      modalBackgroundColor: p.sheet,
       elevation: 0,
       modalElevation: 0,
       showDragHandle: true,
-      dragHandleColor: p.border,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppDimens.radiusSheet + 4),
+      dragHandleColor: p.textSubtle,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: p.glassBorder),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppDimens.radiusSheet),
         ),
       ),
     ),
     popupMenuTheme: PopupMenuThemeData(
-      color: p.surface,
+      color: p.sheet,
       surfaceTintColor: Colors.transparent,
       elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: controlRadius,
-        side: BorderSide(color: p.border),
+        side: BorderSide(color: p.glassBorder),
       ),
     ),
     listTileTheme: ListTileThemeData(
@@ -311,11 +312,35 @@ ThemeData buildThemeFromPalette(AppPalette p) {
     ),
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(
-        color: p.isDark ? p.surfaceAlt : p.text,
+        color: p.isDark ? const Color(0xF0222730) : p.text,
         borderRadius: BorderRadius.circular(8),
       ),
       textStyle: TextStyle(color: p.isDark ? p.text : p.surface, fontSize: 12),
     ),
     badgeTheme: BadgeThemeData(backgroundColor: p.danger),
+    checkboxTheme: CheckboxThemeData(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      side: BorderSide(color: p.textMuted, width: 1.5),
+      fillColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected) ? p.primary : Colors.transparent,
+      ),
+      checkColor: WidgetStatePropertyAll(p.onPrimary),
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected) ? p.onPrimary : p.textMuted,
+      ),
+      trackColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected) ? p.primary : p.surfaceAlt,
+      ),
+      trackOutlineColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected)
+            ? Colors.transparent
+            : p.glassBorder,
+      ),
+    ),
+    dropdownMenuTheme: DropdownMenuThemeData(
+      menuStyle: MenuStyle(backgroundColor: WidgetStatePropertyAll(p.sheet)),
+    ),
   );
 }

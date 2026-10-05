@@ -6,8 +6,10 @@ import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_dimens.dart';
 import '../../core/theme/app_palette.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/glass.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../data/models/ticket.dart';
+import '../shell/shell_header.dart';
 import 'ticket_create_screen.dart';
 import 'ticket_detail_screen.dart';
 import 'ticket_widgets.dart';
@@ -16,9 +18,12 @@ import 'tickets_controller.dart';
 /// "Tickets": the platform's ticket system (same as the web portal).
 ///
 /// Compact / medium: the list, a ticket opens full screen. Expanded: list
-/// and detail side by side.
+/// and detail side by side. [inShell]: shown as a tab of the shell (title
+/// without back button, room for the floating tab bar).
 class TicketsScreen extends ConsumerStatefulWidget {
-  const TicketsScreen({super.key});
+  const TicketsScreen({super.key, this.inShell = false});
+
+  final bool inShell;
 
   @override
   ConsumerState<TicketsScreen> createState() => _TicketsScreenState();
@@ -68,93 +73,89 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen> {
         onFilter: (f) => setState(() => _filter = f),
         onOpen: (t) => _open(t, twoPane: twoPane),
       );
-      final fab = FloatingActionButton.extended(
+      final newButton = GradientButton(
         key: const Key('tickets-new'),
-        heroTag: 'tickets-new',
+        label: 'Nouveau',
+        icon: Icons.add_rounded,
+        expand: false,
+        height: 38,
+        radius: 19,
+        fontSize: 12.5,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         onPressed: () => _create(twoPane: twoPane),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Nouveau ticket'),
       );
+      final Widget header = widget.inShell
+          ? ShellHeader(title: 'Tickets', trailing: newButton)
+          : ScreenHeader(title: 'Tickets', titleSize: 20, action: newButton);
+      final Widget content;
       if (!twoPane) {
-        return Scaffold(
-          floatingActionButton: fab,
-          body: SafeArea(
-            child: Column(
-              children: [
-                const ScreenHeader(title: 'Tickets'),
-                Expanded(child: list),
-              ],
+        content = Column(
+          children: [
+            header,
+            Expanded(child: list),
+          ],
+        );
+      } else {
+        final selected = _selected;
+        content = Column(
+          children: [
+            header,
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(width: AdaptiveDimens.listPaneWidth, child: list),
+                  VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: palette.divider,
+                  ),
+                  Expanded(
+                    child: selected == null
+                        ? const Center(
+                            child: EmptyText(
+                              'Sélectionnez un ticket',
+                              icon: Icons.confirmation_number_outlined,
+                            ),
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppDimens.page,
+                                  4,
+                                  AppDimens.page,
+                                  4,
+                                ),
+                                child: Text(
+                                  'Ticket #$selected',
+                                  style: TextStyle(
+                                    color: palette.textMuted,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: TicketDetailView(
+                                  key: ValueKey('detail-$selected'),
+                                  ticketId: selected,
+                                  onChanged: _refreshList,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         );
       }
-      final selected = _selected;
-      return Scaffold(
-        body: SafeArea(
-          child: Column(
-            children: [
-              const ScreenHeader(title: 'Tickets'),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: AdaptiveDimens.listPaneWidth,
-                      child: Stack(
-                        children: [
-                          Positioned.fill(child: list),
-                          Positioned(right: 16, bottom: 16, child: fab),
-                        ],
-                      ),
-                    ),
-                    VerticalDivider(
-                      width: 1,
-                      thickness: 1,
-                      color: palette.border,
-                    ),
-                    Expanded(
-                      child: selected == null
-                          ? const Center(
-                              child: EmptyText(
-                                'Sélectionnez un ticket',
-                                icon: Icons.confirmation_number_outlined,
-                              ),
-                            )
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    AppDimens.page,
-                                    4,
-                                    AppDimens.page,
-                                    4,
-                                  ),
-                                  child: Text(
-                                    'Ticket #$selected',
-                                    style: TextStyle(
-                                      color: palette.textMuted,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: TicketDetailView(
-                                    key: ValueKey('detail-$selected'),
-                                    ticketId: selected,
-                                    onChanged: _refreshList,
-                                  ),
-                                ),
-                              ],
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+      if (widget.inShell) return content;
+      return GlassScaffold(
+        body: SafeArea(bottom: false, child: content),
       );
     },
   );
@@ -209,7 +210,12 @@ class TicketListPane extends ConsumerWidget {
           builder: (context, gutter) => ListView(
             key: const Key('tickets-list'),
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(gutter, 4, gutter, 96),
+            padding: EdgeInsets.fromLTRB(
+              gutter,
+              4,
+              gutter,
+              24 + BottomBarInset.of(context),
+            ),
             children: [
               if (data.tickets.isEmpty)
                 Padding(
@@ -244,8 +250,17 @@ class TicketListPane extends ConsumerWidget {
   }
 }
 
-/// "Tous / Ouvert / En cours / Fermé / Rejeté" (+ "Assignés à moi" for
-/// admins), scrolling horizontally on narrow screens.
+/// Plural filter label of a status ("Ouverts", "En cours", "Fermés"…).
+String ticketFilterLabel(TicketChoice status) => switch (status.value) {
+  'open' => 'Ouverts',
+  'in_progress' => 'En cours',
+  'closed' => 'Fermés',
+  'rejected' => 'Rejetés',
+  _ => status.label,
+};
+
+/// Blurred segmented filter: "Tous / Ouverts / En cours / Fermés / Rejetés"
+/// (+ "Assignés à moi" for admins), scrolling horizontally when needed.
 class TicketFilterChips extends StatelessWidget {
   const TicketFilterChips({
     super.key,
@@ -260,64 +275,42 @@ class TicketFilterChips extends StatelessWidget {
   final bool showAssignedToMe;
   final ValueChanged<TicketFilter> onChanged;
 
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    Widget chip(String label, bool selected, VoidCallback onTap, {Key? key}) =>
-        Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: FilterChip(
-            key: key,
-            label: Text(label),
-            selected: selected,
-            showCheckmark: false,
-            onSelected: (_) => onTap(),
-            selectedColor: palette.primarySoft,
-            backgroundColor: palette.surface,
-            side: BorderSide(
-              color: selected
-                  ? palette.primary.withValues(alpha: 0.5)
-                  : palette.border,
-            ),
-            labelStyle: TextStyle(
-              color: selected ? palette.primaryText : palette.textMuted,
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-            ),
-            shape: const StadiumBorder(),
-          ),
-        );
+  static const _all = '';
+  static const _assigned = '#assigned-to-me';
 
-    return CenteredContent(
-      builder: (context, gutter) => SingleChildScrollView(
+  @override
+  Widget build(BuildContext context) => CenteredContent(
+    builder: (context, gutter) => Padding(
+      padding: EdgeInsets.fromLTRB(gutter, 8, gutter, 12),
+      child: GlassSegmentedBar<String>(
         key: const Key('ticket-filters'),
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.fromLTRB(gutter, 4, gutter - 8, 8),
-        child: Row(
-          children: [
-            chip(
-              'Tous',
-              filter.status == null,
-              () => onChanged(filter.withStatus(null)),
-              key: const Key('filter-all'),
+        segments: [
+          const GlassSegment(_all, 'Tous', key: Key('filter-all')),
+          for (final s in statuses)
+            GlassSegment(
+              s.value,
+              ticketFilterLabel(s),
+              key: Key('filter-${s.value}'),
             ),
-            for (final s in statuses)
-              chip(
-                s.label,
-                filter.status == s.value,
-                () => onChanged(filter.withStatus(s.value)),
-                key: Key('filter-${s.value}'),
-              ),
-            if (showAssignedToMe)
-              chip(
-                'Assignés à moi',
-                filter.assignedToMe,
-                () => onChanged(filter.withAssignedToMe(!filter.assignedToMe)),
-                key: const Key('filter-assigned'),
-              ),
-          ],
-        ),
+          if (showAssignedToMe)
+            const GlassSegment(
+              _assigned,
+              'Assignés à moi',
+              key: Key('filter-assigned'),
+            ),
+        ],
+        selected: {
+          filter.status ?? _all,
+          if (filter.assignedToMe) _assigned,
+        },
+        onChanged: (value) {
+          if (value == _assigned) {
+            onChanged(filter.withAssignedToMe(!filter.assignedToMe));
+          } else {
+            onChanged(filter.withStatus(value == _all ? null : value));
+          }
+        },
       ),
-    );
-  }
+    ),
+  );
 }

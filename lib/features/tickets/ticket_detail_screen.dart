@@ -8,6 +8,8 @@ import '../../core/theme/app_dimens.dart';
 import '../../core/theme/app_palette.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/form_page.dart';
+import '../../core/widgets/glass.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../data/models/ticket.dart';
 import 'attachment_picker.dart';
@@ -25,8 +27,9 @@ class TicketDetailScreen extends StatelessWidget {
   final VoidCallback? onChanged;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => GlassScaffold(
     body: SafeArea(
+      bottom: false,
       child: Column(
         children: [
           ScreenHeader(title: 'Ticket #$ticketId'),
@@ -617,13 +620,18 @@ class MessageBubble extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(11, 9, 11, 7),
             decoration: BoxDecoration(
               color: mine
-                  ? palette.primary.withValues(alpha: 0.16)
-                  : palette.surfaceAlt,
+                  ? palette.primary.withValues(alpha: 0.2)
+                  : palette.glassSelected,
+              border: Border.all(
+                color: mine
+                    ? palette.primary.withValues(alpha: 0.35)
+                    : palette.glassBorder,
+              ),
               borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(14),
-                topRight: const Radius.circular(14),
-                bottomLeft: Radius.circular(mine ? 14 : 4),
-                bottomRight: Radius.circular(mine ? 4 : 14),
+                topLeft: const Radius.circular(16),
+                topRight: const Radius.circular(16),
+                bottomLeft: Radius.circular(mine ? 16 : 5),
+                bottomRight: Radius.circular(mine ? 5 : 16),
               ),
             ),
             child: Column(
@@ -703,16 +711,11 @@ class TicketComposer extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final file = pending;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: palette.surface,
-        border: Border(top: BorderSide(color: palette.border)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: ContentWidth(
+    return GlassBottomBar(
+      padding: EdgeInsets.zero,
+      child: ContentWidth(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
+            padding: const EdgeInsets.fromLTRB(6, 10, 10, 10),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -754,37 +757,48 @@ class TicketComposer extends StatelessWidget {
                         maxLines: 4,
                         keyboardType: TextInputType.multiline,
                         textCapitalization: TextCapitalization.sentences,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'Votre message',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(23),
+                            borderSide: BorderSide(color: palette.glassBorder),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(23),
+                            borderSide: BorderSide(color: palette.glassBorder),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(23),
+                            borderSide: BorderSide(
+                              color: palette.focusBorder,
+                              width: 1.5,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    IconButton.filled(
-                      key: const Key('composer-send'),
-                      tooltip: 'Envoyer',
-                      onPressed: sending ? null : onSend,
-                      style: IconButton.styleFrom(
-                        backgroundColor: palette.primary,
-                        foregroundColor: palette.onPrimary,
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: 'Envoyer',
+                      child: SizedBox(
+                        width: 46,
+                        child: GradientButton(
+                          key: const Key('composer-send'),
+                          label: '',
+                          icon: Icons.send_rounded,
+                          busy: sending,
+                          height: 46,
+                          radius: 23,
+                          padding: EdgeInsets.zero,
+                          onPressed: sending ? null : onSend,
+                        ),
                       ),
-                      icon: sending
-                          ? SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: palette.onPrimary,
-                              ),
-                            )
-                          : const Icon(Icons.send_rounded),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-        ),
       ),
     );
   }
