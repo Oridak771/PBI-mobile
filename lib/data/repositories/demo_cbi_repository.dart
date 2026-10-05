@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import '../../core/errors/app_exception.dart';
+import '../../core/utils/json.dart';
+
 import '../models/catalog.dart';
 import '../models/history.dart';
+import '../models/mobile_layout.dart';
 import '../models/notification.dart';
 import '../models/remote_config.dart';
 import '../models/ticket.dart';
@@ -13,9 +17,17 @@ import 'demo_fixtures.dart';
 /// Offline repository returning contract-shaped fixtures
 /// (`--dart-define=ENABLE_DEMO_MODE=true`).
 class DemoCbiRepository implements CbiRepository {
-  DemoCbiRepository({this.latency = const Duration(milliseconds: 300)});
+  DemoCbiRepository({
+    this.latency = const Duration(milliseconds: 300),
+    this.ticketAdmin = true,
+  });
 
   final Duration latency;
+
+  /// The demo user manages tickets (sees all, changes status / assignee).
+  final bool ticketAdmin;
+
+  static const demoUserId = 42;
 
   late Catalog _catalog = Catalog.fromJson(demoCatalogJson());
   late NotificationsPage _notifications = NotificationsPage.fromJson(
@@ -24,6 +36,8 @@ class DemoCbiRepository implements CbiRepository {
   late final List<Ticket> _tickets = demoTicketsJson()
       .map(Ticket.fromJson)
       .toList();
+  int _nextTicketId = 100;
+  int _nextMessageId = 100;
   int _nextViewId = 1000;
 
   Future<void> _wait() => Future<void>.delayed(latency);
@@ -67,6 +81,12 @@ class DemoCbiRepository implements CbiRepository {
   }
 
   @override
+  Future<Catalog?> cachedCatalog() async => null;
+
+  @override
+  Future<void> clearCatalogCache() async {}
+
+  @override
   Future<ReportOpening> openReport(int reportId) async {
     await _wait();
     final report = _catalog.reports[reportId];
@@ -76,6 +96,12 @@ class DemoCbiRepository implements CbiRepository {
       server: _catalog.servers.isEmpty ? null : _catalog.servers.first,
       report: report,
     );
+  }
+
+  @override
+  Future<MobileLayout> fetchMobileLayout(int reportId) async {
+    await _wait();
+    return MobileLayout.fromJson(demoMobileLayoutJson(reportId));
   }
 
   @override
@@ -182,26 +208,60 @@ class DemoCbiRepository implements CbiRepository {
     );
   }
 
+  TicketChoices get _choices =>
+      TicketChoices.fromJson(demoTicketChoicesJson(isAdmin: ticketAdmin));
+
+  TicketPerson get _me => TicketPerson.fromJsonOrNull(demoPersonJson(demoUserId))!;
+
+  bool _visible(Ticket t) => ticketAdmin || t.createdBy?.id == demoUserId;
+
   @override
-  Future<List<Ticket>> fetchTickets() async {
+  Future<TicketChoices> fetchTicketChoices() async {
     await _wait();
-    return List.of(_tickets);
+    return _choices;
   }
+
+  @override
+  Future<TicketList> fetchTickets({
+    TicketFilter filter = TicketFilter.all,
+  }) async {
+    await _wait();
+    return TicketList(
+      isAdmin: ticketAdmin,
+      tickets: [
+        for (final t in _tickets)
+          if (_visible(t) &&
+              filter.matches(t, myId: demoUserId, isAdmin: ticketAdmin))
+            t.copyWith(messages: const [], canManage: false),
+      ],
+    );
+  }
+
+  String? _demoAttachmentUrl(TicketAttachment? attachment, String key) =>
+      attachment == null ? null : '$demoAttachmentPrefix$key/';
 
   @override
   Future<Ticket> createTicket(NewTicket ticket) async {
     await _wait();
+    final c = _choices;
+    final now = DateTime.now();
+    final id = _nextTicketId++;
     final created = Ticket(
-      id: _tickets.length + 10,
+      id: id,
       title: ticket.title,
       description: ticket.description,
       ticketType: ticket.ticketType,
-      ticketTypeLabel: ticketTypes[ticket.ticketType] ?? ticket.ticketType,
+      ticketTypeLabel: TicketChoices.labelOf(c.ticketTypes, ticket.ticketType),
+      category: ticket.category,
+      categoryLabel: TicketChoices.labelOf(c.categories, ticket.category),
       priority: ticket.priority,
+      priorityLabel: TicketChoices.labelOf(c.priorities, ticket.priority),
       status: 'open',
-      statusLabel: 'Ouvert',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
+      statusLabel: TicketChoices.labelOf(c.statuses, 'open'),
+      createdBy: _me,
+      attachmentUrl: _demoAttachmentUrl(ticket.attachment, 't$id'),
+      createdAt: now,
+      updatedAt: now,
     );
     _tickets.insert(0, created);
     return created;
@@ -210,37 +270,86 @@ class DemoCbiRepository implements CbiRepository {
   @override
   Future<Ticket> fetchTicket(int id) async {
     await _wait();
-    return _tickets.firstWhere((t) => t.id == id);
+    final ticket = _tickets.firstWhere(
+      (t) => t.id == id && _visible(t),
+      orElse: () => throw const ApiException(
+        statusCode: 404,
+        code: 'not_found',
+        detail: 'Ticket introuvable.',
+      ),
+    );
+    return ticket.copyWith(canManage: ticketAdmin);
   }
 
   @override
-  Future<TicketMessage> sendTicketMessage(int ticketId, String content) async {
+  Future<TicketMessage> sendTicketMessage(
+    int ticketId,
+    String content, {
+    TicketAttachment? attachment,
+  }) async {
     await _wait();
     final index = _tickets.indexWhere((t) => t.id == ticketId);
+    final id = _nextMessageId++;
     final message = TicketMessage(
-      id: DateTime.now().millisecondsSinceEpoch,
-      sender: 'Utilisateur Démo',
+      id: id,
+      sender: _me.name,
+      author: _me,
       isMine: true,
+      fromAdmin: ticketAdmin,
       content: content,
+      attachmentUrl: _demoAttachmentUrl(attachment, 'm$id'),
       createdAt: DateTime.now(),
     );
     if (index >= 0) {
       final t = _tickets[index];
-      _tickets[index] = Ticket(
-        id: t.id,
-        title: t.title,
-        description: t.description,
-        ticketType: t.ticketType,
-        ticketTypeLabel: t.ticketTypeLabel,
-        priority: t.priority,
-        status: t.status,
-        statusLabel: t.statusLabel,
-        createdAt: t.createdAt,
-        updatedAt: DateTime.now(),
-        messagesCount: t.messagesCount + 1,
+      _tickets[index] = t.copyWith(
         messages: [...t.messages, message],
+        messagesCount: t.messages.length + 1,
+        updatedAt: DateTime.now(),
       );
     }
     return message;
+  }
+
+  @override
+  Future<Ticket> updateTicket(int ticketId, TicketUpdate update) async {
+    await _wait();
+    if (!ticketAdmin) {
+      throw const ApiException(
+        statusCode: 403,
+        code: 'forbidden',
+        detail: "Vous n'avez pas la permission d'effectuer cette action.",
+      );
+    }
+    final index = _tickets.indexWhere((t) => t.id == ticketId);
+    if (index < 0) {
+      throw const ApiException(statusCode: 404, code: 'not_found');
+    }
+    var t = _tickets[index];
+    final status = update.status;
+    if (status != null) {
+      t = t.copyWith(
+        status: status,
+        statusLabel: TicketChoices.labelOf(_choices.statuses, status),
+      );
+    }
+    if (update.assigneeChanged) {
+      final admins = await fetchTicketAdmins();
+      final assignee = update.assignedTo == null
+          ? null
+          : admins.where((a) => a.id == update.assignedTo).firstOrNull;
+      t = t.copyWith(assignedTo: () => assignee);
+    }
+    _tickets[index] = t = t.copyWith(updatedAt: DateTime.now());
+    return t.copyWith(messages: const []);
+  }
+
+  @override
+  Future<List<TicketPerson>> fetchTicketAdmins() async {
+    await _wait();
+    return [
+      for (final json in asMapList(demoTicketAdminsJson()['admins']))
+        ?TicketPerson.fromJsonOrNull(json),
+    ];
   }
 }

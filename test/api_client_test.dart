@@ -77,6 +77,77 @@ void main() {
       expect(unauthorized, 0);
     });
 
+    test('401 → reauthenticate once, retry with the new token', () async {
+      final auth = <String?>[];
+      var reauths = 0;
+      late ApiClient client;
+      client = ApiClient(
+        config: config,
+        httpClient: MockClient((request) async {
+          auth.add(request.headers['Authorization']);
+          return request.headers['Authorization'] == 'Bearer new'
+              ? jsonResponse({'unread_count': 1, 'latest_id': 2}, 200)
+              : jsonResponse({'code': 'session_expired'}, 401);
+        }),
+      )
+        ..token = 'old'
+        ..reauthenticate = () async {
+          reauths++;
+          client.token = 'new';
+          return true;
+        }
+        ..onUnauthorized = () => fail('must not expire');
+      final response = await client.post('notifications/read-all/', body: {'a': 1});
+      expect(response.json['unread_count'], 1);
+      expect(auth, ['Bearer old', 'Bearer new']);
+      expect(reauths, 1);
+    });
+
+    test('failed reauthentication → onUnauthorized, no retry', () async {
+      var calls = 0;
+      var unauthorized = 0;
+      final client = ApiClient(
+        config: config,
+        httpClient: MockClient((_) async {
+          calls++;
+          return jsonResponse({'code': 'session_expired'}, 401);
+        }),
+      )
+        ..token = 'old'
+        ..reauthenticate = (() async => false)
+        ..onUnauthorized = () => unauthorized++;
+      await expectLater(client.get('me/'), throwsA(isA<ApiException>()));
+      expect(calls, 1);
+      expect(unauthorized, 1);
+    });
+
+    test('login and logout never trigger a re-login', () async {
+      var reauths = 0;
+      final seen = <String?>[];
+      final client = ApiClient(
+        config: config,
+        httpClient: MockClient((request) async {
+          seen.add(request.headers['Authorization']);
+          return jsonResponse({'code': 'invalid_credentials'}, 401);
+        }),
+      )
+        ..token = 'old'
+        ..reauthenticate = () async {
+          reauths++;
+          return true;
+        };
+      await expectLater(
+        client.post('auth/login/', body: {}, authenticated: false),
+        throwsA(isA<ApiException>()),
+      );
+      await expectLater(
+        client.post('auth/logout/', renewOn401: false),
+        throwsA(isA<ApiException>()),
+      );
+      expect(reauths, 0);
+      expect(seen, [null, 'Bearer old']);
+    });
+
     test('transport failures become NetworkException', () async {
       final client = ApiClient(
         config: config,

@@ -4,9 +4,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/assets.dart';
 import '../../core/providers.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_dimens.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/widgets/asset_slots.dart';
+import '../../core/widgets/common.dart';
 import '../../data/models/remote_config.dart';
 
 /// Legacy AboutAppAct.
@@ -16,73 +17,78 @@ class AboutScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final version = ref.watch(appVersionProvider).value ?? '';
-    final contact = ref.watch(remoteConfigProvider).value?.contact ?? const Contact();
+    final contact =
+        ref.watch(remoteConfigProvider).value?.contact ?? const Contact();
+    final palette = context.palette;
+    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: AppColors.black,
       body: SafeArea(
         child: Column(
           children: [
-            // Like the legacy activity: no header, system back closes it.
+            const ScreenHeader(title: 'À propos'),
             Expanded(
               child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: AppDimens.page),
                 child: Column(
                   children: [
-                    const SizedBox(
-                      height: 50 + 20,
-                      child: Padding(
-                        padding: EdgeInsets.only(top: 20),
-                        child: LogoSlot(
-                          asset: AppAssets.aboutLogo,
-                          fallbackText: 'CBI',
-                          fontSize: 36,
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      height: 64,
+                      child: LogoSlot(
+                        asset: AppAssets.aboutLogo(brightness),
+                        fallbackText: 'CBI',
+                        fontSize: 36,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    Text(
+                      'GSH - CBI',
+                      style: TextStyle(
+                        color: palette.text,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: palette.primarySoft,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'V.$version',
+                        style: TextStyle(
+                          color: palette.primaryText,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'GSH - CBI',
-                      style: TextStyle(
-                        color: AppColors.tint,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        shadows: AppShadows.dark222,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      'V.$version',
-                      style: const TextStyle(
-                        color: AppColors.tint,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        shadows: AppShadows.dark222,
-                      ),
-                    ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 36),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _SquareIconButton(
                           tooltip: contact.websiteLabel,
-                          icon: const Icon(Icons.public, color: AppColors.gray, size: 36),
+                          icon: Icons.public_rounded,
                           onTap: () {
                             final uri = Uri.tryParse(contact.website);
                             if (uri != null) {
-                              launchUrl(uri, mode: LaunchMode.externalApplication);
+                              launchUrl(
+                                uri,
+                                mode: LaunchMode.externalApplication,
+                              );
                             }
                           },
                         ),
-                        const SizedBox(width: 30),
+                        const SizedBox(width: 20),
                         _SquareIconButton(
                           tooltip: contact.email,
-                          icon: const Text(
-                            '@',
-                            style: TextStyle(
-                              color: AppColors.gray,
-                              fontSize: 34,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          icon: Icons.alternate_email_rounded,
                           onTap: () => launchUrl(
                             Uri(scheme: 'mailto', path: contact.email),
                           ),
@@ -93,16 +99,19 @@ class AboutScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 15),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
               child: Column(
                 children: [
                   Text(
                     'Cellule Business Intelligence',
-                    style: TextStyle(color: AppColors.tint, fontSize: 13),
+                    style: TextStyle(color: palette.textMuted, fontSize: 13),
                   ),
-                  SizedBox(height: 2),
-                  _Copyright(),
+                  const SizedBox(height: 2),
+                  Text(
+                    '© ${DateTime.now().year} GSH',
+                    style: TextStyle(color: palette.textSubtle, fontSize: 12),
+                  ),
                 ],
               ),
             ),
@@ -113,16 +122,6 @@ class AboutScreen extends ConsumerWidget {
   }
 }
 
-class _Copyright extends StatelessWidget {
-  const _Copyright();
-
-  @override
-  Widget build(BuildContext context) => Text(
-    '© ${DateTime.now().year} GSH',
-    style: const TextStyle(color: AppColors.tint, fontSize: 13),
-  );
-}
-
 class _SquareIconButton extends StatelessWidget {
   const _SquareIconButton({
     required this.icon,
@@ -130,27 +129,23 @@ class _SquareIconButton extends StatelessWidget {
     required this.tooltip,
   });
 
-  final Widget icon;
+  final IconData icon;
   final VoidCallback onTap;
   final String tooltip;
 
   @override
-  Widget build(BuildContext context) => Tooltip(
-    message: tooltip,
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(15),
-      child: Container(
-        width: 70,
-        height: 70,
-        padding: const EdgeInsets.all(5),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.gray, width: 2),
-          borderRadius: BorderRadius.circular(15),
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Tooltip(
+      message: tooltip,
+      child: AppCard(
+        onTap: onTap,
+        child: SizedBox(
+          width: 64,
+          height: 64,
+          child: Icon(icon, color: palette.primaryText, size: 30),
         ),
-        child: icon,
       ),
-    ),
-  );
+    );
+  }
 }

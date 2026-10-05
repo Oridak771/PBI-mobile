@@ -8,10 +8,62 @@ void main() {
   setUp(() => catalog = Catalog.fromJson(contractCatalog()));
 
   test('parses servers', () {
-    expect(catalog.servers, hasLength(1));
-    expect(catalog.servers.single.host, '10.20.10.63');
-    expect(catalog.serverHosts, {'10.20.10.63'});
+    expect(catalog.servers, hasLength(2));
+    expect(catalog.servers.first.host, '10.20.10.63');
+    expect(catalog.serverHosts, {'10.20.10.63', 'pbirs-mobile.gsh.local'});
+    expect(catalog.hostForServer(2), 'pbirs-mobile.gsh.local');
+    expect(catalog.hostForServer(99), isNull);
     expect(catalog.generatedAt, isNotNull);
+  });
+
+  test('parses group logo_url (optional)', () {
+    final mdm = catalog.sections[1].groups.single;
+    expect(mdm.logoUrl, '/mobile/v1/metadata/9/logo/?v=societe-3f2a9c1b7d4e');
+    expect(catalog.sections.first.groups.single.logoUrl, isNull);
+    expect(
+      CatalogGroup.fromJson({'key': 'x', 'name': 'X', 'logo_url': ''}).logoUrl,
+      isNull,
+      reason: 'empty string means no logo',
+    );
+  });
+
+  test('parses the phone edition of a report (nullable)', () {
+    final phone = catalog.reports[12]!.phone;
+    expect(phone, isNotNull);
+    expect(phone!.id, 31);
+    expect(phone.serverId, 2);
+    expect(phone.embedUrl, contains('t%C3%A9l%C3%A9phone'));
+    expect(catalog.reports[12]!.hasPhoneEdition, isTrue);
+    expect(catalog.reports[15]!.phone, isNull, reason: 'explicit null');
+    expect(catalog.reports[20]!.phone, isNull, reason: 'absent');
+    expect(
+      Report.fromJson({
+        'id': 1,
+        'name': 'r',
+        'phone': {'id': 2},
+      }).phone,
+      isNull,
+      reason: 'no embed_url',
+    );
+    // Kept by copyWith (favourite toggling).
+    expect(catalog.withFavorite(12, false).reports[12]!.phone?.id, 31);
+  });
+
+  test('open/ response carries the report with its phone edition', () {
+    final opening = ReportOpening.fromJson({
+      'view_id': 991,
+      'embed_url': 'http://10.20.10.63/Reports/powerbi/x?rs:embed=true',
+      'server': contractCatalog()['servers'][0],
+      'report': contractCatalog()['reports']['12'],
+    });
+    expect(opening.viewId, 991);
+    expect(opening.server?.host, '10.20.10.63');
+    expect(opening.report?.phone?.embedUrl, contains('pbirs-mobile.gsh.local'));
+    final noPhone = ReportOpening.fromJson({
+      'view_id': 1,
+      'report': contractCatalog()['reports']['15'],
+    });
+    expect(noPhone.report?.phone, isNull);
   });
 
   test('parses sections in order and drops empty sections/groups/tabs', () {

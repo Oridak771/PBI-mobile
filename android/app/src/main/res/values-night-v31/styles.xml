@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- AppCompat parent: required by local_auth (BiometricPrompt) on Android 8 and below. -->
     <!-- Android 12+ system splash: dark legacy background, adaptive PBI icon. -->
-    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+    <style name="LaunchTheme" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
         <item name="android:windowSplashScreenBackground">@color/cbi_background</item>
         <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
     </style>
-    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+    <style name="NormalTheme" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowBackground">@color/cbi_background</item>
     </style>
 </resources>

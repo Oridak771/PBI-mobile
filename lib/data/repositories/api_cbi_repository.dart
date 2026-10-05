@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import '../../core/api/api_client.dart';
+import '../../core/storage/catalog_cache_store.dart';
 import '../../core/utils/json.dart';
 import '../models/catalog.dart';
 import '../models/history.dart';
+import '../models/mobile_layout.dart';
 import '../models/notification.dart';
 import '../models/remote_config.dart';
 import '../models/ticket.dart';
@@ -12,9 +15,10 @@ import 'cbi_repository.dart';
 
 /// [CbiRepository] backed by the CBI mobile API v1.
 class ApiCbiRepository implements CbiRepository {
-  ApiCbiRepository(this._client);
+  ApiCbiRepository(this._client, {CatalogCacheStore? cache}) : _cache = cache; // ignore: prefer_initializing_formals
 
   final ApiClient _client;
+  final CatalogCacheStore? _cache;
 
   String? _catalogEtag;
   Catalog? _cachedCatalog;
@@ -39,8 +43,11 @@ class ApiCbiRepository implements CbiRepository {
     String? device,
     String? appVersion,
   }) async {
+    // Never with the (possibly expired) token: a 401 here means bad
+    // credentials, not an expired session.
     final response = await _client.post(
       'auth/login/',
+      authenticated: false,
       body: {
         'username': username,
         'password': password,
@@ -52,7 +59,8 @@ class ApiCbiRepository implements CbiRepository {
   }
 
   @override
-  Future<void> logout() async => _client.post('auth/logout/');
+  Future<void> logout() async =>
+      _client.post('auth/logout/', renewOn401: false);
 
   @override
   Future<User> fetchMe() async => User.fromJson((await _client.get('me/')).json);
@@ -61,7 +69,34 @@ class ApiCbiRepository implements CbiRepository {
   Future<Uint8List?> fetchPhoto(String photoUrl) => _client.getBytes(photoUrl);
 
   @override
+  Future<Catalog?> cachedCatalog() async {
+    if (_cachedCatalog != null) return _cachedCatalog;
+    final entry = await _cache?.read();
+    if (entry == null) return null;
+    try {
+      final decoded = jsonDecode(entry.json);
+      if (decoded is! Map<String, dynamic>) return null;
+      // Only adopt it if no fresh copy arrived meanwhile.
+      if (_cachedCatalog == null) {
+        _cachedCatalog = Catalog.fromJson(decoded);
+        _catalogEtag = entry.etag;
+      }
+      return _cachedCatalog;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> clearCatalogCache() async {
+    _catalogEtag = null;
+    _cachedCatalog = null;
+    await _cache?.clear();
+  }
+
+  @override
   Future<Catalog> fetchCatalog({bool force = false}) async {
+    if (!force && _cachedCatalog == null) await cachedCatalog();
     final etag = force ? null : _catalogEtag;
     final response = await _client.get(
       'catalog/',
@@ -75,12 +110,21 @@ class ApiCbiRepository implements CbiRepository {
     final catalog = Catalog.fromJson(response.json);
     _catalogEtag = response.headers['etag'];
     _cachedCatalog = catalog;
+    await _cache?.write(
+      CachedCatalogEntry(json: jsonEncode(response.json), etag: _catalogEtag),
+    );
     return catalog;
   }
 
   @override
   Future<ReportOpening> openReport(int reportId) async =>
       ReportOpening.fromJson((await _client.post('reports/$reportId/open/')).json);
+
+  @override
+  Future<MobileLayout> fetchMobileLayout(int reportId) async =>
+      MobileLayout.fromJson(
+        (await _client.get('reports/$reportId/mobile-layout/')).json,
+      );
 
   @override
   Future<void> closeReport(
@@ -160,25 +204,67 @@ class ApiCbiRepository implements CbiRepository {
       );
 
   @override
-  Future<List<Ticket>> fetchTickets() async =>
-      asMapList((await _client.get('tickets/')).json['tickets'])
-          .map(Ticket.fromJson)
-          .toList();
+  Future<TicketChoices> fetchTicketChoices() async =>
+      TicketChoices.fromJson((await _client.get('tickets/choices/')).json);
 
   @override
-  Future<Ticket> createTicket(NewTicket ticket) async =>
-      Ticket.fromJson((await _client.post('tickets/', body: ticket.toJson())).json);
+  Future<TicketList> fetchTickets({
+    TicketFilter filter = TicketFilter.all,
+  }) async {
+    // The server ignores `assigned=me` for non-admins: always send it.
+    final query = filter.query(isAdmin: true);
+    return TicketList.fromJson(
+      (await _client.get('tickets/', query: query.isEmpty ? null : query)).json,
+    );
+  }
+
+  @override
+  Future<Ticket> createTicket(NewTicket ticket) async => Ticket.fromJson(
+    (await _client.postMultipart(
+      'tickets/',
+      fields: ticket.toFields(),
+      files: _files(ticket.attachment),
+    )).json,
+  );
 
   @override
   Future<Ticket> fetchTicket(int id) async =>
       Ticket.fromJson((await _client.get('tickets/$id/')).json);
 
   @override
-  Future<TicketMessage> sendTicketMessage(int ticketId, String content) async =>
-      TicketMessage.fromJson(
+  Future<TicketMessage> sendTicketMessage(
+    int ticketId,
+    String content, {
+    TicketAttachment? attachment,
+  }) async => TicketMessage.fromJson(
+    (await _client.postMultipart(
+      'tickets/$ticketId/messages/',
+      fields: {'content': content},
+      files: _files(attachment),
+    )).json,
+  );
+
+  @override
+  Future<Ticket> updateTicket(int ticketId, TicketUpdate update) async =>
+      Ticket.fromJson(
         (await _client.post(
-          'tickets/$ticketId/messages/',
-          body: {'content': content},
+          'tickets/$ticketId/update/',
+          body: update.toJson(),
         )).json,
       );
+
+  @override
+  Future<List<TicketPerson>> fetchTicketAdmins() async => [
+    for (final json in asMapList((await _client.get('tickets/admins/')).json['admins']))
+      ?TicketPerson.fromJsonOrNull(json),
+  ];
+
+  static List<MultipartAttachment> _files(TicketAttachment? attachment) => [
+    if (attachment != null)
+      MultipartAttachment(
+        field: 'attachment',
+        bytes: attachment.bytes,
+        filename: attachment.filename,
+      ),
+  ];
 }

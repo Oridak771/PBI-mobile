@@ -48,6 +48,17 @@ void main() {
         config.resolve('notifications/', {'after': '8'}).toString(),
         'http://10.10.10.53:8222/mobile/v1/notifications/?after=8',
       );
+      // Versioned logo URLs keep their query string.
+      final logo = config.resolve(
+        '/mobile/v1/metadata/9/logo/?v=societe-3f2a9c1b7d4e',
+      );
+      expect(
+        logo.toString(),
+        'http://10.10.10.53:8222/mobile/v1/metadata/9/logo/?v=societe-3f2a9c1b7d4e',
+      );
+      expect(config.isApiOrigin(logo), isTrue);
+      expect(config.isApiOrigin(Uri.parse('http://10.10.10.54:8222/x')), isFalse);
+      expect(config.isApiOrigin(Uri.parse('http://10.10.10.53/x')), isFalse);
     });
   });
 

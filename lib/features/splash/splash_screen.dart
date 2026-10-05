@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/assets.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/asset_slots.dart';
 import '../../data/models/remote_config.dart';
 import '../auth/login_screen.dart';
 import '../auth/session_controller.dart';
+import '../lock/app_lock_controller.dart';
 import '../notifications/local_notifications.dart';
 import '../shell/shell_controller.dart';
 import '../shell/shell_screen.dart';
@@ -51,6 +54,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       return; // blocking: the user must update
     }
 
+    // App lock: a stored session stays behind the lock screen until the
+    // fingerprint / PIN is confirmed (no network call before, so no silent
+    // re-login while locked).
+    final lock = ref.read(appLockProvider.notifier);
+    await lock.load();
+    bool hasSession;
+    try {
+      hasSession = await ref.read(sessionStoreProvider).read() != null;
+    } catch (_) {
+      hasSession = false;
+    }
+    if (lock.lockOnColdStart(hasSession: hasSession)) {
+      await lock.whenUnlocked(); // or "Se déconnecter" on the lock screen
+      if (!mounted) return;
+    }
+
     bool loggedIn;
     try {
       loggedIn = await ref.read(sessionProvider.notifier).restore();
@@ -71,29 +90,41 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     );
   }
 
+  /// Always dark, like the Android launch screen.
   @override
-  Widget build(BuildContext context) => const Scaffold(
-    backgroundColor: AppColors.black,
-    body: Stack(
-      children: [
-        Positioned.fill(
-          child: Padding(
-            padding: EdgeInsets.all(80),
-            child: LogoSlot(
-              asset: AppAssets.splashLogo,
-              fallbackText: 'CBI',
-              fontSize: 72,
+  Widget build(BuildContext context) => const AnnotatedRegion<SystemUiOverlayStyle>(
+    value: SystemUiOverlayStyle.light,
+    child: Scaffold(
+      backgroundColor: AppColors.splashBackground,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Padding(
+              padding: EdgeInsets.all(96),
+              child: LogoSlot(
+                asset: AppAssets.splashLogo,
+                fallbackText: 'CBI',
+                fontSize: 72,
+                color: Color(0xFFF1F2F4),
+              ),
             ),
           ),
-        ),
-        Align(
-          alignment: Alignment.bottomCenter,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: 100),
-            child: CircularProgressIndicator(),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: EdgeInsets.only(bottom: 96),
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.6,
+                  color: AppColors.green,
+                ),
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }
@@ -108,27 +139,21 @@ Future<void> showUpdateRequiredDialog(
   builder: (context) => PopScope(
     canPop: false,
     child: AlertDialog(
-      backgroundColor: AppColors.sheet,
-      title: const Text(
-        'Mise à jour requise',
-        style: TextStyle(color: AppColors.black),
+      icon: Icon(
+        Icons.system_update_rounded,
+        color: context.palette.primaryText,
       ),
-      content: const Text(
-        "Merci de mettre à jour l'application GSH-CBI .",
-        style: TextStyle(color: AppColors.black),
-      ),
+      title: const Text('Mise à jour requise'),
+      content: const Text("Merci de mettre à jour l'application GSH-CBI ."),
       actions: [
-        TextButton(
+        FilledButton(
           onPressed: () {
             final uri = Uri.tryParse(config.downloadUrl);
             if (uri != null && uri.hasScheme) {
               launchUrl(uri, mode: LaunchMode.externalApplication);
             }
           },
-          child: const Text(
-            'Mettre à Jour',
-            style: TextStyle(color: AppColors.blueGreen),
-          ),
+          child: const Text('Mettre à Jour'),
         ),
       ],
     ),

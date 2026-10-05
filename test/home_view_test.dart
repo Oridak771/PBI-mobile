@@ -14,11 +14,17 @@ void main() {
   testWidgets('renders catalog sections in order with consolidé cards', (
     tester,
   ) async {
+    // Wide enough for the 5 direction cards, tall enough for every section.
+    await tester.binding.setSurfaceSize(const Size(520, 1100));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     final repo = FakeRepository(catalog: Catalog.fromJson(demoCatalogJson()));
     await tester.pumpWidget(testApp(const HomeView(), repo: repo));
     await tester.pumpAndSettle();
 
-    final titles = ['Consolidé', 'Pôle', 'Société', 'Modules'];
+    // Section headers: small upper-case labels, in catalog order.
+    final titles = [
+      for (final t in ['Consolidé', 'Pôle', 'Société', 'Modules']) t.toUpperCase(),
+    ];
     for (final t in titles) {
       expect(find.text(t), findsOneWidget);
     }
@@ -33,12 +39,15 @@ void main() {
         findsOneWidget,
       );
     }
-    // Other sections show groups as tiles with their code as text.
-    expect(find.widgetWithText(GroupTile, 'PI'), findsOneWidget);
-    expect(find.widgetWithText(GroupTile, 'ALPOSTONE'), findsOneWidget);
+    // Full direction name under the code.
+    expect(find.text('Direction Finance et Comptabilité'), findsOneWidget);
+    // Other sections show groups as cards: code tile + name underneath.
+    expect(find.widgetWithText(GroupCard, 'PI'), findsOneWidget);
+    expect(find.widgetWithText(GroupCard, 'Pôle Industrie'), findsOneWidget);
+    expect(find.widgetWithText(GroupCard, 'ALPOSTONE'), findsOneWidget);
 
     final card = tester.getSize(find.byType(ConsolideCard).first);
-    expect(card, const Size(60 + 12, 80 + 12)); // 60x80 + margin 6
+    expect(card, const Size(88, 124));
   });
 
   testWidgets('tapping a consolidé card opens the group on that tab', (

@@ -3,8 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/layout/adaptive.dart';
 import '../../core/providers.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../favorites/favorites_screen.dart';
 import '../group_tabs/group_tabs_view.dart';
 import '../home/home_view.dart';
@@ -112,6 +113,27 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
       ShellTab.settings => const SettingsView(),
     };
 
+    final palette = context.palette;
+    void select(int i) {
+      final tab = ShellTab.values[i];
+      ref.read(shellProvider.notifier).selectTab(tab);
+      if (tab == ShellTab.notifications) {
+        ref.read(notificationsProvider.notifier).refresh();
+      }
+    }
+
+    final compact = context.windowSize.isCompact;
+    final content = SafeArea(
+      bottom: false,
+      left: compact,
+      child: Column(
+        children: [
+          ShellHeader(title: title, onBack: onBack),
+          Expanded(child: body),
+        ],
+      ),
+    );
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -119,57 +141,131 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
         if (!didPop && onBack != null) onBack();
       },
       child: Scaffold(
-        backgroundColor: AppColors.black,
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              ShellHeader(title: title, onBack: onBack),
-              Expanded(child: body),
-            ],
-          ),
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: AppColors.surface,
-          selectedItemColor: AppColors.green,
-          unselectedItemColor: AppColors.white,
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          currentIndex: shell.tab.index,
-          onTap: (i) {
-            final tab = ShellTab.values[i];
-            ref.read(shellProvider.notifier).selectTab(tab);
-            if (tab == ShellTab.notifications) {
-              ref.read(notificationsProvider.notifier).refresh();
-            }
-          },
-          items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: 'Accueil',
-            ),
-            BottomNavigationBarItem(
-              icon: Badge(
-                key: const Key('notification-badge'),
-                isLabelVisible: unread > 0,
-                backgroundColor: AppColors.red,
-                label: Text(unread > 99 ? '99+' : '$unread'),
-                child: const Icon(Icons.notifications),
+        body: compact
+            ? content
+            : Row(
+                children: [
+                  _ShellRail(
+                    selectedIndex: shell.tab.index,
+                    unread: unread,
+                    onSelected: select,
+                  ),
+                  VerticalDivider(width: 1, thickness: 1, color: palette.border),
+                  Expanded(child: content),
+                ],
               ),
-              label: 'Notification',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.favorite),
-              label: 'Favoris',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.menu),
-              label: 'Paramètre',
-            ),
-          ],
-        ),
+        bottomNavigationBar: compact
+            ? DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: palette.border)),
+                ),
+                child: NavigationBar(
+                  selectedIndex: shell.tab.index,
+                  onDestinationSelected: select,
+                  destinations: [
+                    for (final d in _destinations)
+                      NavigationDestination(
+                        icon: d.icon(unread, selected: false),
+                        selectedIcon: d.icon(unread, selected: true),
+                        label: d.label,
+                      ),
+                  ],
+                ),
+              )
+            : null,
       ),
     );
   }
+}
+
+/// Shell destinations, in legacy order (bottom bar and rail).
+class _Destination {
+  const _Destination(this.label, this.outlined, this.filled, {this.badge = false});
+
+  final String label;
+  final IconData outlined;
+  final IconData filled;
+
+  /// Shows the unread notifications badge.
+  final bool badge;
+
+  Widget icon(int unread, {required bool selected}) {
+    final icon = Icon(selected ? filled : outlined);
+    return badge ? _BadgeIcon(count: unread, child: icon) : icon;
+  }
+}
+
+const _destinations = [
+  _Destination('Accueil', Icons.home_outlined, Icons.home_rounded),
+  _Destination(
+    'Notification',
+    Icons.notifications_outlined,
+    Icons.notifications_rounded,
+    badge: true,
+  ),
+  _Destination('Favoris', Icons.favorite_border_rounded, Icons.favorite_rounded),
+  _Destination('Paramètre', Icons.settings_outlined, Icons.settings_rounded),
+];
+
+/// Medium / expanded windows: navigation rail with labels on the left.
+class _ShellRail extends StatelessWidget {
+  const _ShellRail({
+    required this.selectedIndex,
+    required this.unread,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final int unread;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: context.palette.surface,
+    child: SafeArea(
+      right: false,
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: NavigationRail(
+                key: const Key('shell-rail'),
+                selectedIndex: selectedIndex,
+                onDestinationSelected: onSelected,
+                labelType: NavigationRailLabelType.all,
+                groupAlignment: -0.85,
+                destinations: [
+                  for (final d in _destinations)
+                    NavigationRailDestination(
+                      icon: d.icon(unread, selected: false),
+                      selectedIcon: d.icon(unread, selected: true),
+                      label: Text(d.label),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Unread badge of the "Notification" destination.
+class _BadgeIcon extends StatelessWidget {
+  const _BadgeIcon({required this.count, required this.child});
+
+  final int count;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Badge(
+    key: const Key('notification-badge'),
+    isLabelVisible: count > 0,
+    backgroundColor: context.palette.danger,
+    textColor: Colors.white,
+    label: Text(count > 99 ? '99+' : '$count'),
+    child: child,
+  );
 }

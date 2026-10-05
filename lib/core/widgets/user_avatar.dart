@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers.dart';
-import '../theme/app_colors.dart';
 import 'common.dart';
 
 /// Circular avatar: the photo (downloaded with the Bearer header) or the
@@ -50,7 +49,7 @@ class UserAvatar extends ConsumerWidget {
   Widget _initials() => Text(
     initials.isEmpty ? '?' : initials.toUpperCase(),
     style: TextStyle(
-      color: AppColors.white,
+      color: Colors.white,
       fontSize: size * 0.36,
       fontWeight: FontWeight.bold,
     ),

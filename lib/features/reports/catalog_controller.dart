@@ -6,9 +6,24 @@ import '../../data/models/catalog.dart';
 import '../notifications/notifications_controller.dart';
 
 /// `GET catalog/` state + optimistic favourite toggling.
+///
+/// At launch the catalog saved on the device is shown immediately and a
+/// fresh copy is fetched in the background (kept only when it succeeds).
 class CatalogController extends AsyncNotifier<Catalog> {
   @override
-  Future<Catalog> build() => _fetch();
+  Future<Catalog> build() async {
+    Catalog? cached;
+    try {
+      cached = await ref.read(repositoryProvider).cachedCatalog();
+    } catch (_) {
+      cached = null;
+    }
+    if (cached == null) return _fetch();
+    Future<void>(() {
+      if (ref.mounted) refresh();
+    });
+    return cached;
+  }
 
   Future<Catalog> _fetch({bool force = false}) async {
     final catalog = await ref

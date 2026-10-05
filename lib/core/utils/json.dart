@@ -17,6 +17,12 @@ int? asIntOrNull(Object? v) {
   return null;
 }
 
+double asDouble(Object? v, [double fallback = 0]) {
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v) ?? fallback;
+  return fallback;
+}
+
 String asString(Object? v, [String fallback = '']) {
   if (v == null) return fallback;
   if (v is String) return v;

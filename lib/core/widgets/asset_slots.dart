@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/app_palette.dart';
 
 /// Shows [asset] when registered in `AppAssets`, otherwise a styled text logo
 /// ("GSH" / "CBI") – the pending-assets fallback.
@@ -10,26 +10,30 @@ class LogoSlot extends StatelessWidget {
     required this.asset,
     required this.fallbackText,
     this.fontSize = 48,
-    this.color = AppColors.gray,
-    this.accentColor = AppColors.green,
+    this.color,
+    this.accentColor,
     this.fit = BoxFit.contain,
   });
 
   final String? asset;
   final String fallbackText;
   final double fontSize;
-  final Color color;
-  final Color accentColor;
+  /// Fallback text colour (defaults to the palette text colour).
+  final Color? color;
+
+  /// Fallback underline colour (defaults to the brand green).
+  final Color? accentColor;
   final BoxFit fit;
 
   @override
   Widget build(BuildContext context) {
     final path = asset;
+    final palette = context.palette;
     final fallback = _TextLogo(
       text: fallbackText,
       fontSize: fontSize,
-      color: color,
-      accentColor: accentColor,
+      color: color ?? palette.text,
+      accentColor: accentColor ?? palette.primary,
     );
     if (path == null) return fallback;
     return Image.asset(
@@ -82,31 +86,4 @@ class _TextLogo extends StatelessWidget {
       ),
     ),
   );
-}
-
-/// Image of a group / tab (from `AppAssets.forCode`) or, when absent,
-/// [fallback] (usually the code text).
-class CodeImageSlot extends StatelessWidget {
-  const CodeImageSlot({
-    super.key,
-    required this.asset,
-    required this.fallback,
-    this.fit = BoxFit.contain,
-  });
-
-  final String? asset;
-  final Widget fallback;
-  final BoxFit fit;
-
-  @override
-  Widget build(BuildContext context) {
-    final path = asset;
-    if (path == null) return fallback;
-    return Image.asset(
-      path,
-      fit: fit,
-      excludeFromSemantics: true,
-      errorBuilder: (_, _, _) => fallback,
-    );
-  }
 }

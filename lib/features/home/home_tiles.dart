@@ -1,11 +1,40 @@
 import 'package:flutter/material.dart';
 
-import '../../core/assets.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_dimens.dart';
-import '../../core/widgets/asset_slots.dart';
+import '../../core/theme/app_palette.dart';
+import '../../core/widgets/group_logo.dart';
 
-/// Legacy item_consolide.xml: 60x80 card, image slot on top, code below.
+/// Home card of a pôle / société / module… group: fixed width, logo (or
+/// code / initials) tile on top, group name underneath (2 lines max).
+class GroupCard extends StatelessWidget {
+  const GroupCard({
+    super.key,
+    required this.code,
+    required this.name,
+    required this.onTap,
+    this.logoUrl,
+  });
+
+  final String code;
+  final String name;
+  final String? logoUrl;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => HomeCard(
+    name: name,
+    onTap: onTap,
+    tile: GroupLogo(
+      label: (code.isEmpty ? name : code).toUpperCase(),
+      logoUrl: logoUrl,
+      assetCode: code,
+      assetName: name,
+    ),
+  );
+}
+
+/// Consolidé direction card: code in bold in the tile, full direction name
+/// small under it.
 class ConsolideCard extends StatelessWidget {
   const ConsolideCard({
     super.key,
@@ -19,108 +48,66 @@ class ConsolideCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(6),
-    child: Material(
-      color: AppColors.gray,
-      elevation: 2,
-      borderRadius: BorderRadius.circular(14),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          width: AppDimens.consolideCardWidth,
-          height: AppDimens.consolideCardHeight,
-          child: Column(
-            children: [
-              SizedBox(
-                width: 60,
-                height: 60,
-                child: Padding(
-                  padding: const EdgeInsets.all(5),
-                  child: CodeImageSlot(
-                    asset: AppAssets.forCode(code, name: name),
-                    fallback: const SizedBox.shrink(),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      code.toUpperCase(),
-                      maxLines: 1,
-                      style: const TextStyle(
-                        color: AppColors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        shadows: AppShadows.white335,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+  Widget build(BuildContext context) => HomeCard(
+    name: name,
+    onTap: onTap,
+    tile: GroupLogo(
+      label: code.toUpperCase(),
+      assetCode: code,
+      assetName: name,
     ),
   );
 }
 
-/// Legacy item_img_text.xml: 70x70 tile, image (centerCrop) or code text.
-class GroupTile extends StatelessWidget {
-  const GroupTile({
+/// Shared frame of the home cards (~88 wide, flat surface, 1px border).
+class HomeCard extends StatelessWidget {
+  const HomeCard({
     super.key,
-    required this.code,
+    required this.tile,
     required this.name,
     required this.onTap,
   });
 
-  final String code;
+  final Widget tile;
   final String name;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final asset = AppAssets.forCode(code, name: name);
-    final label = (code.isEmpty ? name : code).toUpperCase();
-    return Padding(
-      padding: const EdgeInsets.all(5),
+    final palette = context.palette;
+    return SizedBox(
+      width: AppDimens.groupCardWidth,
+      height: AppDimens.groupCardHeight,
       child: Material(
-        color: AppColors.gray,
-        elevation: 2,
-        borderRadius: BorderRadius.circular(14),
+        color: palette.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimens.radiusCard),
+          side: BorderSide(color: palette.border),
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: SizedBox(
-            width: AppDimens.tile,
-            height: AppDimens.tile,
-            child: Padding(
-              padding: const EdgeInsets.all(3),
-              child: CodeImageSlot(
-                asset: asset,
-                fit: BoxFit.cover,
-                fallback: Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppColors.blueGreen,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        shadows: AppShadows.white335,
-                      ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(6, 10, 6, 6),
+            child: Column(
+              children: [
+                tile,
+                const SizedBox(height: 8),
+                Expanded(
+                  child: Text(
+                    name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: palette.text,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      height: 1.2,
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ),

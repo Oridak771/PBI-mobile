@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
 import '../../data/models/catalog.dart';
 import '../reports/report_list.dart';
 
@@ -22,19 +21,14 @@ class GroupTabsView extends StatelessWidget {
       initialIndex: initialTab.clamp(0, tabs.length - 1),
       child: Column(
         children: [
-          ColoredBox(
-            color: AppColors.black,
-            child: TabBar(
-              isScrollable: tabs.length > 2,
-              tabAlignment: tabs.length > 2 ? TabAlignment.start : TabAlignment.fill,
-              labelColor: AppColors.blueGreen,
-              unselectedLabelColor: AppColors.gray,
-              indicatorColor: AppColors.accent,
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-              tabs: [for (final tab in tabs) Tab(text: tab.label)],
-            ),
+          TabBar(
+            isScrollable: tabs.length > 2,
+            tabAlignment: tabs.length > 2 ? TabAlignment.start : TabAlignment.fill,
+            padding: tabs.length > 2
+                ? const EdgeInsets.symmetric(horizontal: 4)
+                : EdgeInsets.zero,
+            indicatorWeight: 3,
+            tabs: [for (final tab in tabs) Tab(text: tab.label)],
           ),
           Expanded(
             child: TabBarView(

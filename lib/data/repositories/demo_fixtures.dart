@@ -51,7 +51,13 @@ Json demoLoginJson() => {
   'credentials': {'domain': 'GSH', 'username': 'demo'},
 };
 
-Json _report(int id, String name, String location, {bool favorite = false}) => {
+Json _report(
+  int id,
+  String name,
+  String location, {
+  bool favorite = false,
+  bool phone = false,
+}) => {
   'id': id,
   'name': name,
   'description': '',
@@ -59,9 +65,34 @@ Json _report(int id, String name, String location, {bool favorite = false}) => {
   'server_id': 1,
   // In demo mode the viewer renders a local placeholder instead of this URL.
   'embed_url': 'http://10.20.10.63/Reports/powerbi/Demo/Rapport$id?rs:embed=true',
+  'phone': phone
+      ? {
+          'id': 100 + id,
+          'server_id': 1,
+          'embed_url':
+              'http://10.20.10.63/Reports/powerbi/Demo/Rapport$id%20(t%C3%A9l%C3%A9phone)?rs:embed=true',
+        }
+      : null,
   'modified_at': _ago(const Duration(days: 2)),
   'favorite': favorite,
 };
+
+/// Sociétés of the demo catalog that have a logo (`logo_url`), mapped to the
+/// bundled legacy images by [demoLogoAsset].
+const _demoLogos = {'GAMMA', 'HPS', 'PUMA'};
+
+String _demoLogoUrl(int optionId, String code) =>
+    '/mobile/v1/metadata/$optionId/logo/?v=demo-${code.toLowerCase()}';
+
+/// Bundled image standing for a demo `logo_url` (`?v=demo-<name>`), `null`
+/// for any other URL.
+String? demoLogoAsset(String logoUrl) {
+  final version = Uri.tryParse(logoUrl)?.queryParameters['v'] ?? '';
+  if (!version.startsWith('demo-')) return null;
+  final name = version.substring(5);
+  if (!_demoLogos.contains(name.toUpperCase())) return null;
+  return 'assets/images/legacy/$name.png';
+}
 
 Json _tab(String key, String name, String code, List<int> ids) => {
   'key': key,
@@ -143,6 +174,8 @@ Json demoCatalogJson() => {
             'name': code[0] + code.substring(1).toLowerCase(),
             'code': code,
             'parent': i.isEven ? 'Pôle Industrie' : 'Pôle Construction',
+            if (_demoLogos.contains(code))
+              'logo_url': _demoLogoUrl(100 + i, code),
             'tabs': [
               _tab('direction:7', 'Direction Finance et Comptabilité', 'DFC', [12]),
               _tab('direction:8', 'Direction Commerciale', 'DCO', [13]),
@@ -171,14 +204,20 @@ Json demoCatalogJson() => {
       _report(2, 'Tableau de bord Direction Générale', 'Consolidé / DGR'),
       _report(3, 'Suivi Budgétaire', 'Consolidé / DCG'),
       _report(4, 'Effectifs et Masse Salariale', 'Consolidé / DRH'),
-      _report(5, 'Encaissement Clients', 'Consolidé / DFC', favorite: true),
+      _report(
+        5,
+        'Encaissement Clients',
+        'Consolidé / DFC',
+        favorite: true,
+        phone: true,
+      ),
       _report(6, 'Balance Âgée', 'Consolidé / DFC'),
       _report(7, 'Ventes par Région', 'Consolidé / DCO'),
       _report(8, 'Production Mensuelle', 'Pôle Industrie / Général'),
       _report(9, 'Stocks Matières Premières', 'Pôle Industrie / Général'),
       _report(10, 'Trésorerie Pôle Construction', 'Pôle Construction / DFC'),
       _report(11, 'Carnet de Commandes', 'Pôle Construction / DCO'),
-      _report(12, 'Situation Financière', 'Société / DFC'),
+      _report(12, 'Situation Financière', 'Société / DFC', phone: true),
       _report(13, 'Chiffre d\'Affaires Société', 'Société / DCO'),
       _report(14, 'Absentéisme', 'Société / DRH'),
       _report(15, 'Position de Trésorerie', 'Modules / Trésorerie'),
@@ -275,6 +314,73 @@ Json demoHistoryUsersJson() => {
   ],
 };
 
+/// Demo ticket attachments: any of these URLs maps to a bundled image
+/// (see [demoAttachmentAsset]).
+const demoAttachmentPrefix = '/mobile/v1/tickets/demo-attachment/';
+
+/// Bundled image standing for a demo `attachment_url`, `null` otherwise.
+String? demoAttachmentAsset(String url) =>
+    url.startsWith(demoAttachmentPrefix) ? 'assets/images/legacy/gsh_logo_home.png' : null;
+
+Json demoPersonJson(int id) => switch (id) {
+  42 => {'id': 42, 'name': 'Utilisateur Démo', 'initials': 'UD', 'avatar_color': '#358BA4'},
+  7 => {'id': 7, 'name': 'Cellule BI', 'initials': 'CB', 'avatar_color': '#71952B'},
+  43 => {'id': 43, 'name': 'Amina Benali', 'initials': 'AB', 'avatar_color': '#C24157'},
+  _ => {'id': id, 'name': 'Utilisateur $id', 'initials': 'U', 'avatar_color': '#8F9097'},
+};
+
+/// `GET tickets/choices/` (labels as the platform's `Ticket` model).
+Json demoTicketChoicesJson({bool isAdmin = true}) => {
+  'ticket_types': [
+    {'value': 'bug', 'label': 'Signalement de bug'},
+    {'value': 'dashboard', 'label': 'Demande de dashboard'},
+    {'value': 'refresh', 'label': "Demande d'actualisation"},
+    {'value': 'access', 'label': "Demande d'accès"},
+    {'value': 'other', 'label': 'Autre'},
+  ],
+  'categories': [
+    {'value': 'bibliotheque', 'label': 'Bibliothèque'},
+    {'value': 'cbi', 'label': 'CBI'},
+  ],
+  'priorities': [
+    {'value': 'low', 'label': 'Basse'},
+    {'value': 'medium', 'label': 'Moyenne'},
+    {'value': 'high', 'label': 'Haute'},
+  ],
+  'statuses': [
+    {'value': 'open', 'label': 'Ouvert'},
+    {'value': 'in_progress', 'label': 'En cours'},
+    {'value': 'closed', 'label': 'Fermé'},
+    {'value': 'rejected', 'label': 'Rejeté'},
+  ],
+  'is_admin': isAdmin,
+  'max_attachment_bytes': 5 * 1024 * 1024,
+};
+
+/// `GET tickets/admins/`.
+Json demoTicketAdminsJson() => {
+  'admins': [demoPersonJson(7), demoPersonJson(42)],
+};
+
+Json _demoMessage(
+  int id,
+  int author,
+  String content,
+  Duration ago, {
+  bool admin = false,
+  bool attachment = false,
+}) => {
+  'id': id,
+  'sender': demoPersonJson(author)['name'],
+  'author': demoPersonJson(author),
+  'is_mine': author == 42,
+  'from_admin': admin,
+  'content': content,
+  'attachment_url': attachment ? '${demoAttachmentPrefix}m$id/' : null,
+  'created_at': _ago(ago),
+};
+
+/// `GET tickets/<id>/` payloads (the list drops `messages` / `can_manage`).
 List<Json> demoTicketsJson() => [
   {
     'id': 5,
@@ -282,27 +388,104 @@ List<Json> demoTicketsJson() => [
     'description': 'Merci de me donner accès aux rapports DRH.',
     'ticket_type': 'access',
     'ticket_type_label': "Demande d'accès",
+    'category': 'cbi',
+    'category_label': 'CBI',
     'priority': 'medium',
+    'priority_label': 'Moyenne',
     'status': 'open',
     'status_label': 'Ouvert',
+    'created_by': demoPersonJson(42),
+    'assigned_to': demoPersonJson(7),
+    'attachment_url': null,
     'created_at': _ago(const Duration(days: 1)),
     'updated_at': _ago(const Duration(hours: 4)),
     'messages_count': 2,
     'messages': [
-      {
-        'id': 1,
-        'sender': 'Utilisateur Démo',
-        'is_mine': true,
-        'content': 'Bonjour, pouvez-vous traiter ma demande ?',
-        'created_at': _ago(const Duration(days: 1)),
-      },
-      {
-        'id': 2,
-        'sender': 'Cellule BI',
-        'is_mine': false,
-        'content': 'Bonjour, votre demande est en cours de validation.',
-        'created_at': _ago(const Duration(hours: 4)),
-      },
+      _demoMessage(1, 42, 'Bonjour, pouvez-vous traiter ma demande ?',
+          const Duration(days: 1)),
+      _demoMessage(2, 7, 'Bonjour, votre demande est en cours de validation.',
+          const Duration(hours: 4), admin: true),
     ],
   },
+  {
+    'id': 4,
+    'title': 'Chiffres de mars absents du rapport Trésorerie',
+    'description':
+        "Le rapport Trésorerie Pôle Construction n'affiche pas les données de mars.",
+    'ticket_type': 'bug',
+    'ticket_type_label': 'Signalement de bug',
+    'category': 'cbi',
+    'category_label': 'CBI',
+    'priority': 'high',
+    'priority_label': 'Haute',
+    'status': 'in_progress',
+    'status_label': 'En cours',
+    'created_by': demoPersonJson(43),
+    'assigned_to': demoPersonJson(42),
+    'attachment_url': '${demoAttachmentPrefix}t4/',
+    'created_at': _ago(const Duration(days: 3)),
+    'updated_at': _ago(const Duration(days: 2)),
+    'messages_count': 1,
+    'messages': [
+      _demoMessage(3, 42, 'Capture reçue, nous regardons la source.',
+          const Duration(days: 2), admin: true, attachment: true),
+    ],
+  },
+  {
+    'id': 2,
+    'title': 'Nouveau tableau de bord Achats',
+    'description': 'Besoin d’un suivi mensuel des achats par fournisseur.',
+    'ticket_type': 'dashboard',
+    'ticket_type_label': 'Demande de dashboard',
+    'category': 'bibliotheque',
+    'category_label': 'Bibliothèque',
+    'priority': 'low',
+    'priority_label': 'Basse',
+    'status': 'closed',
+    'status_label': 'Fermé',
+    'created_by': demoPersonJson(42),
+    'assigned_to': null,
+    'attachment_url': null,
+    'created_at': _ago(const Duration(days: 20)),
+    'updated_at': _ago(const Duration(days: 12)),
+    'messages_count': 0,
+    'messages': <Json>[],
+  },
 ];
+
+/// `GET reports/<id>/mobile-layout/`: odd report ids have a phone layout
+/// (one page, two visuals), even ones none.
+Json demoMobileLayoutJson(int reportId) => reportId.isEven
+    ? {'available': false, 'version': 1, 'pages': <String, dynamic>{}}
+    : {
+        'available': true,
+        'version': 1,
+        'pages': {
+          'ReportSection': {
+            'display_name': 'Synthèse',
+            'width': 320,
+            'height': 640,
+            'visuals': {
+              'demoCard': {'x': 10, 'y': 10, 'z': 1000, 'width': 300, 'height': 120},
+              'demoChart': {
+                'x': 10,
+                'y': 140,
+                'z': 2000,
+                'width': 300,
+                'height': 260,
+                'objects': {
+                  'labels': [
+                    {
+                      'properties': {
+                        'show': {
+                          'expr': {'Literal': {'Value': 'true'}},
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      };

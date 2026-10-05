@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/providers.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_dimens.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/common.dart';
-import '../../core/widgets/legacy_dialog.dart';
+import '../../core/widgets/form_page.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../core/widgets/user_avatar.dart';
 import '../../data/models/history.dart';
 import '../auth/session_controller.dart';
@@ -94,11 +97,10 @@ class _AdminHistoryScreenState extends ConsumerState<_AdminHistoryScreen> {
   }
 
   Future<void> _openFilter() async {
-    final result = await Navigator.of(context).push<(String, String)>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => HistoryFilterDialog(q: _q, company: _company),
-      ),
+    final result = await showHistoryFilterSheet(
+      context,
+      q: _q,
+      company: _company,
     );
     if (result == null) return;
     _q = result.$1;
@@ -110,7 +112,7 @@ class _AdminHistoryScreenState extends ConsumerState<_AdminHistoryScreen> {
   Widget build(BuildContext context) {
     Widget body;
     if (_items.isEmpty && _loading) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const SkeletonList(count: 8, lines: 3);
     } else if (_items.isEmpty && _error != null) {
       body = Center(
         child: RetryMessage(message: errorMessage(_error!), onRetry: _reload),
@@ -118,12 +120,18 @@ class _AdminHistoryScreenState extends ConsumerState<_AdminHistoryScreen> {
     } else {
       body = RefreshIndicator(
         onRefresh: _reload,
-        child: ListView.builder(
+        child: CenteredContent(
+          builder: (context, gutter) => ListView.builder(
           controller: _scroll,
-          padding: const EdgeInsets.symmetric(vertical: 5),
+          padding: EdgeInsets.fromLTRB(gutter, 4, gutter, 24),
           itemCount: _items.isEmpty ? 1 : _items.length + (_loading ? 1 : 0),
           itemBuilder: (context, i) {
-            if (_items.isEmpty) return const EmptyText('Aucun historique');
+            if (_items.isEmpty) {
+              return const EmptyText(
+                'Aucun historique',
+                icon: Icons.history_rounded,
+              );
+            }
             if (i >= _items.length) {
               return const Padding(
                 padding: EdgeInsets.all(12),
@@ -141,10 +149,12 @@ class _AdminHistoryScreenState extends ConsumerState<_AdminHistoryScreen> {
             );
           },
         ),
+        ),
       );
     }
+    final palette = context.palette;
+    final filtered = _q.isNotEmpty || _company.isNotEmpty;
     return Scaffold(
-      backgroundColor: AppColors.black,
       body: SafeArea(
         child: Column(
           children: [
@@ -153,7 +163,15 @@ class _AdminHistoryScreenState extends ConsumerState<_AdminHistoryScreen> {
               action: IconButton(
                 tooltip: 'Filtre',
                 onPressed: _openFilter,
-                icon: const Icon(Icons.filter_list, color: AppColors.blueGreen),
+                icon: Badge(
+                  isLabelVisible: filtered,
+                  smallSize: 8,
+                  backgroundColor: palette.primary,
+                  child: Icon(
+                    Icons.filter_list_rounded,
+                    color: filtered ? palette.primaryText : palette.textMuted,
+                  ),
+                ),
               ),
             ),
             Expanded(child: body),
@@ -164,7 +182,7 @@ class _AdminHistoryScreenState extends ConsumerState<_AdminHistoryScreen> {
   }
 }
 
-/// Legacy row_item_historique.xml.
+/// User with their last consultation (admin history list).
 class HistoryUserRow extends StatelessWidget {
   const HistoryUserRow({super.key, required this.entry, required this.onTap});
 
@@ -173,92 +191,108 @@ class HistoryUserRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final user = entry.user;
     final last = entry.last;
-    const tint = TextStyle(color: AppColors.tint, fontSize: 13);
-    return Card(
-      color: AppColors.surface,
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(3),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final muted = TextStyle(color: palette.textMuted, fontSize: 13);
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 8),
+      onTap: onTap,
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
+              UserAvatar(
+                size: 48,
+                photoUrl: user.photoUrl,
+                initials: user.initials,
+                color: user.avatarColor,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.name,
+                      style: TextStyle(
+                        color: palette.text,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (user.description.isNotEmpty)
+                      Text(user.description, style: muted),
+                    if (user.company.isNotEmpty) Text(user.company, style: muted),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: palette.textSubtle),
+            ],
+          ),
+          if (last != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: palette.surfaceAlt,
+                borderRadius: BorderRadius.circular(AppDimens.radiusControl),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: UserAvatar(
-                      size: 65,
-                      photoUrl: user.photoUrl,
-                      initials: user.initials,
-                      color: user.avatarColor,
+                  Text(
+                    'Dernière consultation :',
+                    style: TextStyle(
+                      color: palette.textSubtle,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          user.name,
-                          style: const TextStyle(
-                            color: AppColors.gray,
-                            fontSize: 16,
-                          ),
-                        ),
-                        if (user.description.isNotEmpty)
-                          Text(user.description, style: tint),
-                        if (user.company.isNotEmpty) Text(user.company, style: tint),
-                      ],
-                    ),
+                  const SizedBox(height: 2),
+                  Text(
+                    last.path,
+                    style: TextStyle(color: palette.text, fontSize: 13),
+                  ),
+                  Text(
+                    formatHistoryLine(last.openedAt, last.durationSeconds),
+                    style: muted,
                   ),
                 ],
               ),
-              if (last != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Dernière consultation :',
-                        style: TextStyle(
-                          color: AppColors.gray,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(last.path, style: const TextStyle(color: AppColors.tint)),
-                      Text(
-                        formatHistoryLine(last.openedAt, last.durationSeconds),
-                        style: const TextStyle(color: AppColors.tint),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
+            ),
+          ],
+        ],
       ),
     );
   }
 }
 
-/// Legacy filtre_historique_dialogue.xml. Pops `(q, company)`.
-class HistoryFilterDialog extends StatefulWidget {
-  const HistoryFilterDialog({super.key, this.q = '', this.company = ''});
+/// History filter bottom sheet. Returns `(q, company)`, `null` when closed.
+Future<(String, String)?> showHistoryFilterSheet(
+  BuildContext context, {
+  String q = '',
+  String company = '',
+}) => showModalBottomSheet<(String, String)>(
+  context: context,
+  isScrollControlled: true,
+  builder: (_) => HistoryFilterSheet(q: q, company: company),
+);
+
+class HistoryFilterSheet extends StatefulWidget {
+  const HistoryFilterSheet({super.key, this.q = '', this.company = ''});
 
   final String q;
   final String company;
 
   @override
-  State<HistoryFilterDialog> createState() => _HistoryFilterDialogState();
+  State<HistoryFilterSheet> createState() => _HistoryFilterSheetState();
 }
 
-class _HistoryFilterDialogState extends State<HistoryFilterDialog> {
+class _HistoryFilterSheetState extends State<HistoryFilterSheet> {
   late final _q = TextEditingController(text: widget.q);
   late final _company = TextEditingController(text: widget.company);
 
@@ -269,29 +303,64 @@ class _HistoryFilterDialogState extends State<HistoryFilterDialog> {
     super.dispose();
   }
 
+  void _apply() =>
+      Navigator.of(context).pop((_q.text.trim(), _company.text.trim()));
+
   @override
-  Widget build(BuildContext context) => LegacyDialogScaffold(
-    title: 'Filtre',
-    submitLabel: 'Appliquer le filtre',
-    onSubmit: () =>
-        Navigator.of(context).pop((_q.text.trim(), _company.text.trim())),
-    children: [
-      LegacyField(
-        label: 'Utilisateur',
-        child: TextField(
-          controller: _q,
-          style: legacyFieldTextStyle,
-          decoration: legacyInputDecoration(hint: 'Prénom Nom'),
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppDimens.page,
+            0,
+            AppDimens.page,
+            AppDimens.page,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Filtre',
+                style: TextStyle(
+                  color: palette.text,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              LabeledField(
+                label: 'Utilisateur',
+                child: TextField(
+                  controller: _q,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    hintText: 'Prénom Nom',
+                    prefixIcon: Icon(Icons.person_search_rounded),
+                  ),
+                ),
+              ),
+              LabeledField(
+                label: 'Filiale',
+                child: TextField(
+                  controller: _company,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _apply(),
+                  decoration: const InputDecoration(
+                    hintText: 'Filiale',
+                    prefixIcon: Icon(Icons.apartment_rounded),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              SubmitButton(label: 'Appliquer le filtre', onPressed: _apply),
+            ],
+          ),
         ),
       ),
-      LegacyField(
-        label: 'Filiale',
-        child: TextField(
-          controller: _company,
-          style: legacyFieldTextStyle,
-          decoration: legacyInputDecoration(hint: 'Filiale'),
-        ),
-      ),
-    ],
-  );
+    );
+  }
 }

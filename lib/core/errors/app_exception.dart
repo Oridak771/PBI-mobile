@@ -5,11 +5,21 @@ class ApiException implements Exception {
     this.code,
     this.detail,
     this.retryAfter,
+    this.errors = const {},
   });
 
   final int statusCode;
   final String? code;
   final String? detail;
+
+  /// Form validation errors of a `400` (`{"errors": {field: [messages]}}`).
+  final Map<String, List<String>> errors;
+
+  /// First message of each field of [errors].
+  Map<String, String> get fieldErrors => {
+    for (final e in errors.entries)
+      if (e.value.isNotEmpty) e.key: e.value.first,
+  };
 
   /// Seconds, from the `Retry-After` header on `429`.
   final int? retryAfter;
@@ -49,6 +59,8 @@ abstract final class ErrorMessages {
   static const invalidCredentials = 'Email ou mot de passe invalide';
   static const sessionExpired =
       'Votre session a expiré. Veuillez vous reconnecter.';
+  static const passwordChanged =
+      'Votre mot de passe a changé. Veuillez vous reconnecter.';
   static const forbidden = "Vous n'avez pas accès à cette ressource.";
   static const notFound = 'Élément introuvable.';
   static const configuration = 'Configuration du serveur invalide.';

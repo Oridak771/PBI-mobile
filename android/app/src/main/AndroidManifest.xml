@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Lets WorkManager reschedule the periodic poll after a reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Fingerprint / face app lock (local_auth, BiometricPrompt). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <application
         android:label="GSH - CBI"
         android:name="${applicationName}"

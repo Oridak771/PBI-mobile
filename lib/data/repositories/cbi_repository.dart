@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import '../models/catalog.dart';
 import '../models/history.dart';
+import '../models/mobile_layout.dart';
 import '../models/notification.dart';
 import '../models/remote_config.dart';
 import '../models/ticket.dart';
@@ -35,7 +36,19 @@ abstract class CbiRepository {
   // Catalog & reports
   /// `GET catalog/`, using `If-None-Match` / `304` with the last ETag.
   Future<Catalog> fetchCatalog({bool force = false});
+
+  /// Last catalog saved on the device (shown at launch while [fetchCatalog]
+  /// refreshes it), `null` when there is none.
+  Future<Catalog?> cachedCatalog();
+
+  /// Forgets the saved catalog (session ended).
+  Future<void> clearCatalogCache();
   Future<ReportOpening> openReport(int reportId);
+
+  /// `GET reports/<id>/mobile-layout/`: the Power BI phone layout. The first
+  /// call for a report may take several seconds (the backend downloads the
+  /// .pbix), later ones are served from the backend cache.
+  Future<MobileLayout> fetchMobileLayout(int reportId);
   Future<void> closeReport(
     int reportId, {
     required int viewId,
@@ -63,9 +76,30 @@ abstract class CbiRepository {
   });
   Future<UserHistory> fetchUserHistory(int userId, {int days = 30});
 
-  // Tickets
-  Future<List<Ticket>> fetchTickets();
+  // Tickets (the platform's ticket system)
+  /// `GET tickets/choices/`.
+  Future<TicketChoices> fetchTicketChoices();
+
+  /// `GET tickets/?status=&assigned=me`.
+  Future<TicketList> fetchTickets({TicketFilter filter = TicketFilter.all});
+
+  /// `POST tickets/` (multipart, optional image). A `400` carries the form
+  /// errors in [ApiException.errors].
   Future<Ticket> createTicket(NewTicket ticket);
+
+  /// `GET tickets/<id>/`: ticket + messages + `can_manage`.
   Future<Ticket> fetchTicket(int id);
-  Future<TicketMessage> sendTicketMessage(int ticketId, String content);
+
+  /// `POST tickets/<id>/messages/` (multipart, optional image).
+  Future<TicketMessage> sendTicketMessage(
+    int ticketId,
+    String content, {
+    TicketAttachment? attachment,
+  });
+
+  /// `POST tickets/<id>/update/` (admins): status and/or assignee.
+  Future<Ticket> updateTicket(int ticketId, TicketUpdate update);
+
+  /// `GET tickets/admins/` (admins): assignable users.
+  Future<List<TicketPerson>> fetchTicketAdmins();
 }

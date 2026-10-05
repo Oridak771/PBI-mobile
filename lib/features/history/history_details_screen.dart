@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/providers.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../core/widgets/user_avatar.dart';
 import '../../data/models/history.dart';
 import '../auth/session_controller.dart';
@@ -58,17 +60,16 @@ class _HistoryDetailsScreenState extends ConsumerState<HistoryDetailsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppColors.black,
     body: SafeArea(
       child: Column(
         children: [
-          const ScreenHeader(title: 'Historique détaillé', titleSize: 20),
+          const ScreenHeader(title: 'Historique détaillé'),
           Expanded(
             child: FutureBuilder<UserHistory>(
               future: _future,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const SkeletonList(count: 8);
                 }
                 if (snapshot.hasError) {
                   return Center(
@@ -81,14 +82,24 @@ class _HistoryDetailsScreenState extends ConsumerState<HistoryDetailsScreen> {
                 final data = snapshot.requireData;
                 return RefreshIndicator(
                   onRefresh: _refresh,
-                  child: ListView(
-                    padding: const EdgeInsets.only(bottom: 10),
+                  child: CenteredContent(
+                    builder: (context, gutter) => ListView(
+                    padding: EdgeInsets.fromLTRB(gutter, 4, gutter, 24),
                     children: [
                       _UserBlock(user: data.user),
+                      SectionHeader(
+                        'Consultations',
+                        count: data.history.length,
+                        padding: const EdgeInsets.fromLTRB(2, 20, 2, 8),
+                      ),
                       if (data.history.isEmpty)
-                        const EmptyText('Aucune consultation ces 30 derniers jours'),
+                        const EmptyText(
+                          'Aucune consultation ces 30 derniers jours',
+                          icon: Icons.history_rounded,
+                        ),
                       for (final item in data.history) HistoryDetailRow(item: item),
                     ],
+                  ),
                   ),
                 );
               },
@@ -106,63 +117,89 @@ class _UserBlock extends StatelessWidget {
   final HistoryUser user;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(10),
-    child: Row(
-      children: [
-        UserAvatar(
-          size: 70,
-          photoUrl: user.photoUrl,
-          initials: user.initials,
-          color: user.avatarColor,
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user.name,
-                style: const TextStyle(color: AppColors.gray, fontSize: 16),
-              ),
-              if (user.description.isNotEmpty)
-                Text(
-                  user.description,
-                  style: const TextStyle(color: AppColors.tint, fontSize: 14),
-                ),
-            ],
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          UserAvatar(
+            size: 56,
+            photoUrl: user.photoUrl,
+            initials: user.initials,
+            color: user.avatarColor,
           ),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.name,
+                  style: TextStyle(
+                    color: palette.text,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (user.description.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    user.description,
+                    style: TextStyle(color: palette.textMuted, fontSize: 13),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-/// Legacy row_item_historique_details.xml.
+/// One consultation: report path, date, time and duration.
 class HistoryDetailRow extends StatelessWidget {
   const HistoryDetailRow({super.key, required this.item});
 
   final HistoryItem item;
 
   @override
-  Widget build(BuildContext context) => Card(
-    color: AppColors.surface,
-    elevation: 0,
-    margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    child: Padding(
-      padding: const EdgeInsets.all(6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      child: Row(
         children: [
-          Text(item.path, style: const TextStyle(color: AppColors.gray)),
-          const SizedBox(height: 5),
-          Text(
-            formatHistoryLine(item.openedAt, item.durationSeconds),
-            style: const TextStyle(color: AppColors.tint),
+          const IconWell(Icons.insights_rounded),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.path,
+                  style: TextStyle(
+                    color: palette.text,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  formatHistoryLine(item.openedAt, item.durationSeconds),
+                  style: TextStyle(
+                    color: palette.textMuted,
+                    fontSize: 13,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
 }

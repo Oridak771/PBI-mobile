@@ -57,6 +57,14 @@ class Catalog {
       if (s.host.isNotEmpty) s.host.toLowerCase(),
   };
 
+  /// Host of `servers[id]` (lower case), `null` when unknown.
+  String? hostForServer(int? id) {
+    for (final s in servers) {
+      if (s.id == id && s.host.isNotEmpty) return s.host.toLowerCase();
+    }
+    return null;
+  }
+
   bool isFavorite(int reportId) => favoriteIds.contains(reportId);
 
   /// Reports of a tab, in the tab's order, skipping unknown ids.
@@ -174,6 +182,7 @@ class CatalogGroup {
     required this.name,
     this.code = '',
     this.parent,
+    this.logoUrl,
     this.tabs = const [],
   });
 
@@ -182,6 +191,7 @@ class CatalogGroup {
     name: asString(json['name']),
     code: asString(json['code']),
     parent: asStringOrNull(json['parent']),
+    logoUrl: asStringOrNull(json['logo_url']),
     tabs: asMapList(json['tabs'])
         .map(GroupTab.fromJson)
         .where((t) => t.reportIds.isNotEmpty)
@@ -192,6 +202,10 @@ class CatalogGroup {
   final String name;
   final String code;
   final String? parent;
+
+  /// Pôle / société logo, relative to `API_BASE_URL`
+  /// (`/mobile/v1/metadata/9/logo/?v=…`). Versioned: cacheable forever.
+  final String? logoUrl;
   final List<GroupTab> tabs;
 
   /// Text drawn over the tile when no image is registered.
@@ -230,6 +244,7 @@ class Report {
     this.location = '',
     this.serverId,
     this.embedUrl = '',
+    this.phone,
     this.modifiedAt,
     this.favorite = false,
   });
@@ -241,6 +256,7 @@ class Report {
     location: asString(json['location']),
     serverId: asIntOrNull(json['server_id']),
     embedUrl: asString(json['embed_url']),
+    phone: PhoneEdition.tryParse(json['phone']),
     modifiedAt: asDate(json['modified_at']),
     favorite: asBool(json['favorite']),
   );
@@ -251,8 +267,13 @@ class Report {
   final String location;
   final int? serverId;
   final String embedUrl;
+
+  /// Portrait "phone" edition linked by an admin, `null` when none.
+  final PhoneEdition? phone;
   final DateTime? modifiedAt;
   final bool favorite;
+
+  bool get hasPhoneEdition => phone != null;
 
   Report copyWith({int? id, bool? favorite}) => Report(
     id: id ?? this.id,
@@ -261,9 +282,33 @@ class Report {
     location: location,
     serverId: serverId,
     embedUrl: embedUrl,
+    phone: phone,
     modifiedAt: modifiedAt,
     favorite: favorite ?? this.favorite,
   );
+}
+
+/// `report.phone`: the portrait edition of a report (a separate PBIRS
+/// report, never listed on its own).
+class PhoneEdition {
+  const PhoneEdition({required this.id, this.serverId, required this.embedUrl});
+
+  /// `null` for a missing / malformed object or an empty `embed_url`.
+  static PhoneEdition? tryParse(Object? value) {
+    if (value is! Map) return null;
+    final json = asMap(value);
+    final url = asString(json['embed_url']).trim();
+    if (url.isEmpty) return null;
+    return PhoneEdition(
+      id: asInt(json['id']),
+      serverId: asIntOrNull(json['server_id']),
+      embedUrl: url,
+    );
+  }
+
+  final int id;
+  final int? serverId;
+  final String embedUrl;
 }
 
 /// `POST reports/<id>/open/`.

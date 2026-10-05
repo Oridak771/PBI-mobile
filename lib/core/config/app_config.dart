@@ -30,14 +30,25 @@ class AppConfig {
   bool get hasValidBaseUrl => isValidApiBaseUrl(apiBaseUrl);
 
   /// Absolute URL for a path relative to `mobile/v1/` or an absolute server
-  /// path such as `/mobile/v1/me/photo/`.
+  /// path such as `/mobile/v1/me/photo/` (a query string in [path] is kept,
+  /// e.g. the versioned `/mobile/v1/metadata/9/logo/?v=…`).
   Uri resolve(String path, [Map<String, String>? query]) {
     final uri = path.startsWith('/')
-        ? Uri.parse(apiBaseUrl).replace(path: path)
+        ? Uri.parse(apiBaseUrl).resolve(path)
         : apiV1.resolve(path);
     return query == null || query.isEmpty
         ? uri
-        : uri.replace(queryParameters: query);
+        : uri.replace(queryParameters: {...uri.queryParameters, ...query});
+  }
+
+  /// `true` when [uri] points at the CBI platform itself (same scheme, host
+  /// and port as `API_BASE_URL`): only then may the Bearer token be sent.
+  bool isApiOrigin(Uri uri) {
+    final base = Uri.tryParse(apiBaseUrl);
+    if (base == null) return false;
+    return uri.scheme == base.scheme &&
+        uri.host.toLowerCase() == base.host.toLowerCase() &&
+        uri.port == base.port;
   }
 
   static String normalizeBaseUrl(String value) {

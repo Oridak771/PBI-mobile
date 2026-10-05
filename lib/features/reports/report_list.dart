@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_dimens.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../data/models/catalog.dart';
 import '../viewer/viewer_screen.dart';
 import 'catalog_controller.dart';
@@ -34,28 +36,34 @@ class ReportList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final catalog = ref.watch(catalogProvider).value;
-    if (catalog == null) return const Center(child: CircularProgressIndicator());
+    if (catalog == null) return const SkeletonList();
     final reports = catalog.reportsFor(tab);
     return RefreshIndicator(
       onRefresh: () => ref.read(catalogProvider.notifier).refresh(),
-      child: ListView.builder(
-        padding: const EdgeInsets.only(top: 15, bottom: 10),
+      child: CenteredContent(
+        builder: (context, gutter) => ListView.builder(
+        padding: EdgeInsets.fromLTRB(gutter, 12, gutter, 24),
         itemCount: reports.length,
         itemBuilder: (context, i) {
           final report = reports[i];
           return ReportRow(
+            key: ValueKey(report.id),
             report: report,
+            subtitle: report.description.isNotEmpty
+                ? report.description
+                : report.location,
             favorite: catalog.isFavorite(report.id),
             onTap: () => openReport(context, report),
             onToggleFavorite: () => toggleFavorite(context, ref, report.id),
           );
         },
       ),
+      ),
     );
   }
 }
 
-/// Legacy row_item_rapport.xml.
+/// Report row: leading insights icon well, name, muted subtitle, heart.
 class ReportRow extends StatelessWidget {
   const ReportRow({
     super.key,
@@ -63,54 +71,83 @@ class ReportRow extends StatelessWidget {
     required this.favorite,
     required this.onTap,
     required this.onToggleFavorite,
+    this.subtitle,
   });
 
   final Report report;
   final bool favorite;
+  final String? subtitle;
   final VoidCallback onTap;
   final VoidCallback onToggleFavorite;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: AppDimens.reportRowHeight,
-    child: Card(
-      color: AppColors.surface,
-      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final sub = subtitle ?? '';
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 8),
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minHeight: AppDimens.reportRowMinHeight,
+        ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 5),
+          padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
           child: Row(
             children: [
+              const IconWell(Icons.insights_rounded),
+              const SizedBox(width: 12),
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(5),
-                  child: Text(
-                    report.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.gray,
-                      fontSize: 18,
-                      height: 1.15,
-                      shadows: AppShadows.dark335,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      report.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: palette.text,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        height: 1.25,
+                      ),
                     ),
-                  ),
+                    if (sub.isNotEmpty || report.hasPhoneEdition) ...[
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          if (report.hasPhoneEdition) ...[
+                            Icon(
+                              Icons.smartphone_rounded,
+                              size: 13,
+                              color: palette.primaryText,
+                              semanticLabel: 'Édition téléphone',
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Expanded(
+                            child: Text(
+                              sub,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: palette.textMuted,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(5),
-                child: FavoriteHeart(
-                  favorite: favorite,
-                  onPressed: onToggleFavorite,
-                ),
-              ),
+              FavoriteHeart(favorite: favorite, onPressed: onToggleFavorite),
             ],
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

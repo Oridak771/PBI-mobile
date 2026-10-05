@@ -1,37 +1,29 @@
-import 'package:flutter/widgets.dart';
-
-import 'app_colors.dart';
-
-/// Dimensions of the legacy app (res/values/dimens.xml, default bucket).
+/// Spacing, radii and sizes of the Portail BI style.
 abstract final class AppDimens {
-  /// Tile side (`divider_padding`).
-  static const tile = 70.0;
-  static const consolideCardWidth = 60.0;
-  static const consolideCardHeight = 80.0;
+  /// Page side padding.
+  static const page = 16.0;
 
-  /// `middle`.
-  static const middle = 40.0;
-  static const shellHeaderHeight = 65.0;
-  static const screenHeaderHeight = 50.0;
-  static const viewerHeaderHeight = 45.0;
-  static const reportRowHeight = 65.0;
+  /// Cards / list rows.
+  static const radiusCard = 14.0;
+
+  /// Inputs, buttons, icon wells.
+  static const radiusControl = 10.0;
+
+  /// Sheets and dialogs.
+  static const radiusSheet = 16.0;
+
+  static const shellHeaderHeight = 64.0;
+  static const screenHeaderHeight = 56.0;
+  static const reportRowMinHeight = 64.0;
+
+  /// Home group / direction cards: fixed width, logo tile, name under it.
+  static const groupCardWidth = 88.0;
+  static const groupCardHeight = 124.0;
+  static const groupTile = 64.0;
+
+  /// Horizontal gap between home cards.
+  static const groupCardGap = 8.0;
 
   /// Société grid rows (3 on tablets >= 600dp wide).
   static int societeGridRows(double screenWidth) => screenWidth >= 600 ? 3 : 2;
-}
-
-/// Legacy `android:shadow*` text shadows.
-abstract final class AppShadows {
-  static const white335 = [
-    Shadow(color: AppColors.textShadowWhite, offset: Offset(3, 3), blurRadius: 5),
-  ];
-  static const dark335 = [
-    Shadow(color: AppColors.textShadow, offset: Offset(3, 3), blurRadius: 5),
-  ];
-  static const dark223 = [
-    Shadow(color: AppColors.textShadow, offset: Offset(2, 2), blurRadius: 3),
-  ];
-  static const dark222 = [
-    Shadow(color: AppColors.textShadow, offset: Offset(2, 2), blurRadius: 2),
-  ];
 }

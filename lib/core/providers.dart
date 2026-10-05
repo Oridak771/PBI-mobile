@@ -9,6 +9,9 @@ import '../data/repositories/cbi_repository.dart';
 import '../data/repositories/demo_cbi_repository.dart';
 import 'api/api_client.dart';
 import 'config/app_config.dart';
+import 'storage/catalog_cache_store.dart';
+import 'storage/lock_settings_store.dart';
+import 'storage/remembered_credentials_store.dart';
 import 'storage/session_store.dart';
 
 /// Compile-time configuration (`--dart-define`).
@@ -18,6 +21,33 @@ final sessionStoreProvider = Provider<SessionStore>((ref) {
   final config = ref.watch(appConfigProvider);
   return config.demoMode ? MemorySessionStore() : SecureSessionStore();
 });
+
+/// "Se souvenir de moi" credentials (survive logout and 401).
+final rememberedCredentialsStoreProvider = Provider<RememberedCredentialsStore>((
+  ref,
+) {
+  final config = ref.watch(appConfigProvider);
+  return config.demoMode
+      ? MemoryRememberedCredentialsStore()
+      : SecureRememberedCredentialsStore();
+});
+
+/// App lock preferences ("Paramètre → Sécurité").
+final lockSettingsStoreProvider = Provider<LockSettingsStore>((ref) {
+  final config = ref.watch(appConfigProvider);
+  return config.demoMode ? MemoryLockSettingsStore() : SecureLockSettingsStore();
+});
+
+/// Last catalog kept on the device (instant home screen at launch).
+final catalogCacheStoreProvider = Provider<CatalogCacheStore>((ref) {
+  final config = ref.watch(appConfigProvider);
+  return config.demoMode
+      ? MemoryCatalogCacheStore()
+      : const PrefsCatalogCacheStore();
+});
+
+/// Wall clock (overridden in tests).
+final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   final client = ApiClient(config: ref.watch(appConfigProvider));
@@ -29,7 +59,10 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 final repositoryProvider = Provider<CbiRepository>((ref) {
   final config = ref.watch(appConfigProvider);
   if (config.demoMode) return DemoCbiRepository();
-  return ApiCbiRepository(ref.watch(apiClientProvider));
+  return ApiCbiRepository(
+    ref.watch(apiClientProvider),
+    cache: ref.watch(catalogCacheStoreProvider),
+  );
 });
 
 /// Installed app version (`version` of pubspec, e.g. `3.0.0`).

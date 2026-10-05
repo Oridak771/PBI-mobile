@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../data/models/catalog.dart';
 import '../reports/catalog_controller.dart';
 import '../reports/report_list.dart';
@@ -25,17 +26,29 @@ class FavoritesView extends ConsumerWidget {
           ),
         );
       }
-      return const Center(child: CircularProgressIndicator());
+      return const SkeletonList();
     }
     final favorites = data.favorites;
     return RefreshIndicator(
       onRefresh: () => ref.read(catalogProvider.notifier).refresh(),
-      child: ListView(
-        padding: const EdgeInsets.only(top: 10, bottom: 10),
+      child: CenteredContent(
+        builder: (context, gutter) => ListView(
+        padding: EdgeInsets.fromLTRB(gutter, 4, gutter, 24),
         children: [
           if (favorites.isEmpty)
-            const EmptyText('Aucun rapport favoris')
-          else
+            const Padding(
+              padding: EdgeInsets.only(top: 40),
+              child: EmptyText(
+                'Aucun rapport favoris',
+                icon: Icons.favorite_border_rounded,
+              ),
+            )
+          else ...[
+            SectionHeader(
+              'Rapports',
+              count: favorites.length,
+              padding: const EdgeInsets.fromLTRB(2, 8, 2, 10),
+            ),
             for (final report in favorites)
               FavoriteRow(
                 key: ValueKey(report.id),
@@ -43,13 +56,15 @@ class FavoritesView extends ConsumerWidget {
                 onTap: () => openReport(context, report),
                 onRemove: () => toggleFavorite(context, ref, report.id),
               ),
+          ],
         ],
+      ),
       ),
     );
   }
 }
 
-/// Legacy row_item_rapport_favoris.xml.
+/// Favourite row: same row as the report lists, location as subtitle.
 class FavoriteRow extends StatelessWidget {
   const FavoriteRow({
     super.key,
@@ -63,53 +78,11 @@ class FavoriteRow extends StatelessWidget {
   final VoidCallback onRemove;
 
   @override
-  Widget build(BuildContext context) => Card(
-    color: AppColors.surface,
-    margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 5, right: 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: Text(
-                      report.location,
-                      style: const TextStyle(
-                        color: AppColors.greyText,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    height: 1,
-                    margin: const EdgeInsets.symmetric(horizontal: 10),
-                    color: AppColors.greyText,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(5, 5, 5, 10),
-                    child: Text(
-                      report.name,
-                      style: const TextStyle(
-                        color: AppColors.gray,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            FavoriteHeart(favorite: true, onPressed: onRemove),
-          ],
-        ),
-      ),
-    ),
+  Widget build(BuildContext context) => ReportRow(
+    report: report,
+    favorite: true,
+    subtitle: report.location,
+    onTap: onTap,
+    onToggleFavorite: onRemove,
   );
 }

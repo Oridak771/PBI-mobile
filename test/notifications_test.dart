@@ -1,4 +1,5 @@
 import 'package:cbi_mobile/core/storage/session_store.dart';
+import 'package:cbi_mobile/core/theme/app_palette.dart';
 import 'package:cbi_mobile/data/models/notification.dart';
 import 'package:cbi_mobile/features/notifications/notification_worker.dart';
 import 'package:cbi_mobile/features/notifications/notifications_view.dart';
@@ -47,18 +48,24 @@ void main() {
     await tester.pumpWidget(testApp(const NotificationsView(), repo: repo));
     await tester.pumpAndSettle();
 
-    expect(find.text('Nouveau'), findsOneWidget);
-    expect(find.text('Déjà vu'), findsOneWidget);
+    expect(find.text('NOUVEAU'), findsOneWidget);
+    expect(find.text('DÉJÀ VU'), findsOneWidget);
     expect(find.text('Tout marquer comme lu'), findsOneWidget);
-    final nouveauY = tester.getTopLeft(find.text('Nouveau')).dy;
-    final dejaVuY = tester.getTopLeft(find.text('Déjà vu')).dy;
+    final nouveauY = tester.getTopLeft(find.text('NOUVEAU')).dy;
+    final dejaVuY = tester.getTopLeft(find.text('DÉJÀ VU')).dy;
     final recentY = tester.getTopLeft(find.text('Accès')).dy;
     final olderY = tester.getTopLeft(find.text('Ancienne')).dy;
     expect(nouveauY < recentY && recentY < dejaVuY && dejaVuY < olderY, isTrue);
 
-    // Unread title in blue, read one in grey.
-    expect(tester.widget<Text>(find.text('Accès')).style?.color, const Color(0xFF0099D5));
-    expect(tester.widget<Text>(find.text('Ancienne')).style?.color, const Color(0xFFABABAB));
+    // Unread title with the green accent, read one muted (light theme).
+    expect(
+      tester.widget<Text>(find.text('Accès')).style?.color,
+      AppPalette.light.primaryText,
+    );
+    expect(
+      tester.widget<Text>(find.text('Ancienne')).style?.color,
+      AppPalette.light.textMuted,
+    );
   });
 
   testWidgets('empty sections show the legacy messages', (tester) async {

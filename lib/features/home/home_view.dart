@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_dimens.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../data/models/catalog.dart';
 import '../group_tabs/group_tabs_view.dart';
 import '../reports/catalog_controller.dart';
@@ -29,7 +31,7 @@ class HomeView extends ConsumerWidget {
           ),
         );
       }
-      return const Center(child: CircularProgressIndicator());
+      return const HomeSkeleton();
     }
 
     Future<void> refresh() => ref.read(catalogProvider.notifier).refresh();
@@ -47,9 +49,8 @@ class HomeView extends ConsumerWidget {
 
     return RefreshIndicator(
       onRefresh: refresh,
-      color: AppColors.green,
       child: ListView(
-        padding: const EdgeInsets.only(top: 10, bottom: 10),
+        padding: const EdgeInsets.only(bottom: 24),
         children: [
           for (final (index, section) in data.sections.indexed)
             HomeSection(section: section, first: index == 0),
@@ -65,80 +66,97 @@ class HomeSection extends ConsumerWidget {
   final CatalogSection section;
   final bool first;
 
+  static const _padding = EdgeInsets.symmetric(horizontal: AppDimens.page);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final shell = ref.read(shellProvider.notifier);
-    final Widget content;
+    final List<Widget> cards;
     if (section.isConsolide) {
       final group = section.groups.first;
-      content = SizedBox(
-        height: AppDimens.consolideCardHeight + 12,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          children: [
-            for (final (i, tab) in group.tabs.indexed)
-              ConsolideCard(
-                code: tab.code.isEmpty ? tab.name : tab.code,
-                name: tab.name,
-                onTap: () => shell.openGroup(group, initialTab: i),
-              ),
-          ],
+      cards = [
+        for (final (i, tab) in group.tabs.indexed)
+          ConsolideCard(
+            code: tab.code.isEmpty ? tab.name : tab.code,
+            name: tab.name,
+            onTap: () => shell.openGroup(group, initialTab: i),
+          ),
+      ];
+    } else {
+      cards = [for (final g in section.groups) _groupCard(g, shell)];
+    }
+
+    final Widget content;
+    if (!context.windowSize.isCompact) {
+      // Tablets: every card visible, wrapping; the column count follows the
+      // width, the cards keep their size.
+      content = Padding(
+        padding: _padding,
+        child: Wrap(
+          key: ValueKey('home-wrap-${section.title}'),
+          spacing: AppDimens.groupCardGap,
+          runSpacing: AppDimens.groupCardGap,
+          children: cards,
         ),
       );
-    } else if (section.layout == SectionLayout.grid) {
+    } else if (!section.isConsolide && section.layout == SectionLayout.grid) {
       final rows = AppDimens.societeGridRows(MediaQuery.sizeOf(context).width);
       content = SizedBox(
-        height: rows * (AppDimens.tile + 10),
-        child: GridView.count(
+        height:
+            rows * AppDimens.groupCardHeight +
+            (rows - 1) * AppDimens.groupCardGap,
+        child: GridView.builder(
           scrollDirection: Axis.horizontal,
-          crossAxisCount: rows,
-          children: [
-            for (final group in section.groups)
-              GroupTile(
-                code: group.code,
-                name: group.name,
-                onTap: () => shell.openGroup(group),
-              ),
-          ],
+          padding: _padding,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: rows,
+            mainAxisSpacing: AppDimens.groupCardGap,
+            crossAxisSpacing: AppDimens.groupCardGap,
+            childAspectRatio:
+                AppDimens.groupCardHeight / AppDimens.groupCardWidth,
+          ),
+          itemCount: cards.length,
+          itemBuilder: (context, i) => cards[i],
         ),
       );
     } else {
       content = SizedBox(
-        height: AppDimens.tile + 10,
-        child: ListView(
+        height: AppDimens.groupCardHeight,
+        child: ListView.separated(
           scrollDirection: Axis.horizontal,
-          children: [
-            for (final group in section.groups)
-              GroupTile(
-                code: group.code,
-                name: group.name,
-                onTap: () => shell.openGroup(group),
-              ),
-          ],
+          padding: _padding,
+          itemCount: cards.length,
+          separatorBuilder: (_, _) =>
+              const SizedBox(width: AppDimens.groupCardGap),
+          itemBuilder: (context, i) => cards[i],
         ),
       );
     }
-    return Padding(
-      padding: EdgeInsets.only(top: first ? 0 : 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 10, top: 5, bottom: 5),
-            child: Text(
-              section.title,
-              style: const TextStyle(
-                color: AppColors.green,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          section.title,
+          count: cards.length,
+          padding: EdgeInsets.fromLTRB(
+            AppDimens.page,
+            first ? 8 : 20,
+            AppDimens.page,
+            10,
           ),
-          content,
-        ],
-      ),
+        ),
+        content,
+      ],
     );
   }
+
+  static Widget _groupCard(CatalogGroup group, ShellController shell) =>
+      GroupCard(
+        code: group.code,
+        name: group.name,
+        logoUrl: group.logoUrl,
+        onTap: () => shell.openGroup(group),
+      );
 }
 
 /// Legacy "no privilege" state with the "Contacter" link.
@@ -150,44 +168,36 @@ class NoAccessMessage extends StatelessWidget {
       'veuillez contacter \n la cellule-BI.';
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 30),
-    child: Column(
-      children: [
-        const Padding(
-          padding: EdgeInsets.all(20),
-          child: Text(
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppDimens.page, 48, AppDimens.page, 16),
+      child: Column(
+        children: [
+          IconWell(Icons.lock_outline_rounded, size: 56),
+          const SizedBox(height: 16),
+          Text(
             message,
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.tint, fontSize: 18),
+            style: TextStyle(color: palette.textMuted, fontSize: 16, height: 1.35),
           ),
-        ),
-        InkWell(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const TicketCreateScreen(
-                initialType: 'access',
-                initialTitle:
-                    "Demande d'accès aux tableaux de bord de l'Application "
-                    'Mobile CBI',
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const TicketCreateScreen(
+                  initialType: 'access',
+                  initialTitle:
+                      "Demande d'accès aux tableaux de bord de l'Application "
+                      'Mobile CBI',
+                ),
               ),
             ),
+            icon: Icon(Icons.mail_outline_rounded, color: palette.primaryText),
+            label: const Text('Contacter'),
           ),
-          child: const Padding(
-            padding: EdgeInsets.all(8),
-            child: Text(
-              'Contacter',
-              style: TextStyle(
-                color: AppColors.gray,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                decoration: TextDecoration.underline,
-                decorationColor: AppColors.gray,
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
